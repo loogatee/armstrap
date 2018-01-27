@@ -95,6 +95,7 @@ static void init_hw()
 	RCC_ClocksTypeDef  rclocks;
 	uint32_t           prioritygroup = 0x00;
 
+	SystemCoreClockUpdate();
 	RCC_GetClocksFreq(&rclocks);
 
 	FLASH->ACR |= FLASH_ACR_ICEN;      // Flash Instruction Cache Enable
@@ -103,8 +104,8 @@ static void init_hw()
 
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-	SysTick_Config(rclocks.HCLK_Frequency / 3125);      // 168000000 / 3125 = 53760 = 0xD200 = ??
-                                                        //   **Verified with debugger that parm === 53760
+	SysTick_Config(rclocks.HCLK_Frequency / 1000);      // 168000000 / 1000 = 168000
+
 	prioritygroup = NVIC_GetPriorityGrouping();
 
 	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(prioritygroup, TICK_INT_PRIORITY, 0));
