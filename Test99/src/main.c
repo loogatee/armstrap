@@ -36,7 +36,7 @@ SOFTWARE.
 
 typedef struct
 {
-	volatile uint32_t   SysTicks;
+    volatile uint32_t   SysTicks;
 } GLOBALS_t;
 
 
@@ -53,18 +53,18 @@ static uint32_t GetSysDelta( uint32_t OriginalTime );
 
 int main(void)
 {
-	uint32_t     Ntime;
+    uint32_t     Ntime;
 
-	Globals.SysTicks = 0;
+    Globals.SysTicks = 0;
 
     init_hw();
 
     while(1)
     {
-    	GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
+        GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
 
-    	Ntime = GetSysTick();
-    	while(GetSysDelta(Ntime) < 1000 ) { ; }
+        Ntime = GetSysTick();
+        while(GetSysDelta(Ntime) < 1000 ) { ; }
     }
 
     return 0; // never reached
@@ -74,7 +74,7 @@ int main(void)
 
 static void init_gpios(void)
 {
-	GPIO_InitTypeDef gpio;
+    GPIO_InitTypeDef gpio;
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 
@@ -92,23 +92,23 @@ static void init_gpios(void)
 
 static void init_hw()
 {
-	RCC_ClocksTypeDef  rclocks;
-	uint32_t           prioritygroup = 0x00;
+    RCC_ClocksTypeDef  rclocks;
+    uint32_t           prioritygroup = 0x00;
 
-	SystemCoreClockUpdate();
-	RCC_GetClocksFreq(&rclocks);
+    SystemCoreClockUpdate();
+    RCC_GetClocksFreq(&rclocks);
 
-	FLASH->ACR |= FLASH_ACR_ICEN;      // Flash Instruction Cache Enable
-	FLASH->ACR |= FLASH_ACR_DCEN;      // Flash Data Cache Enable
-	FLASH->ACR |= FLASH_ACR_PRFTEN;    // Flash Pre-Fetch Buffer Enable
+    FLASH->ACR |= FLASH_ACR_ICEN;      // Flash Instruction Cache Enable
+    FLASH->ACR |= FLASH_ACR_DCEN;      // Flash Data Cache Enable
+    FLASH->ACR |= FLASH_ACR_PRFTEN;    // Flash Pre-Fetch Buffer Enable
 
-	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+    NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-	SysTick_Config(rclocks.HCLK_Frequency / 1000);      // 168000000 / 1000 = 168000
+    SysTick_Config(rclocks.HCLK_Frequency / 1000);      // 168000000 / 1000 = 168000
 
-	prioritygroup = NVIC_GetPriorityGrouping();
+    prioritygroup = NVIC_GetPriorityGrouping();
 
-	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(prioritygroup, TICK_INT_PRIORITY, 0));
+    NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(prioritygroup, TICK_INT_PRIORITY, 0));
 
     init_gpios();
 }
@@ -135,8 +135,8 @@ static uint32_t GetSysDelta( uint32_t OriginalTime )
 
 void main_systick_handler(void)
 {
-	//GPIO_ToggleBits(GPIOC, GPIO_Pin_6);
-	++Globals.SysTicks;
+    //GPIO_ToggleBits(GPIOC, GPIO_Pin_6);
+    ++Globals.SysTicks;
 }
 
 
