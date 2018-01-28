@@ -53,18 +53,20 @@ static uint32_t GetSysDelta( uint32_t OriginalTime );
 
 int main(void)
 {
-    uint32_t     Ntime;
+    uint32_t  Ntime;
 
     Globals.SysTicks = 0;
+    Ntime            = 0;
 
     init_hw();
 
     while(1)
     {
-        GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
-
-        Ntime = GetSysTick();
-        while(GetSysDelta(Ntime) < 1000 ) { ; }
+    	if( GetSysDelta(Ntime) >= 1000 )
+    	{
+            GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
+            Ntime = GetSysTick();
+    	}
     }
 
     return 0; // never reached
