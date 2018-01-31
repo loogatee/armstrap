@@ -27,7 +27,6 @@ SOFTWARE.
 ******************************************************************************
 */
 #include "stm32f4xx.h"
-#include "stm32f4xx_rcc.h"
 
 
 #define  TICK_INT_PRIORITY            ((uint32_t)0x0F)       /*!< tick interrupt priority */
@@ -69,7 +68,7 @@ int main(void)
     	}
     }
 
-    return 0; // never reached
+    return 0;
 }
 
 
@@ -95,7 +94,7 @@ static void init_gpios(void)
 static void init_hw()
 {
     RCC_ClocksTypeDef  rclocks;
-    uint32_t           prioritygroup = 0x00;
+    uint32_t           prioritygroup = 0;
 
     SystemCoreClockUpdate();
     RCC_GetClocksFreq(&rclocks);
