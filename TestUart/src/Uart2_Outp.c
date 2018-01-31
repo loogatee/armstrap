@@ -1,14 +1,9 @@
 
 #include "stm32f4xx.h"
-#include "SerialOutp.h"
+#include "proj_common.h"
+#include "Uart.h"
 
 
-#define ASCII_BACKSPACE         8
-#define ASCII_LINEFEED          10
-#define ASCII_CARRIAGERETURN    13
-#define ASCII_SPACE             32
-#define ASCII_TILDE             126
-#define ASCII_DELETE            127
 
 
 
@@ -30,6 +25,7 @@ typedef struct
 
 
 
+
                                                // OUTPUT related global variables:
 static u32    serd_num_Qitems;                 //   Number of Items on the Queue
 static u32    serd_inn_Qindex;                 //   Item will be deposited here
@@ -40,8 +36,6 @@ static u32    serd_ostate_machine;             //   holds state of Serial Output
 static char   serd_databuf[11];                //   data buffer for value conversion
 
 
-static char hexv[] =  { '0', '1', '2', '3', '4', '5', '6', '7',
-                        '8', '9' ,'A', 'B', 'C', 'D', 'E', 'F' };
 
 
 
@@ -97,31 +91,7 @@ void U2_Send( u32 otype, char *sptr, u32 *completionptr, u32 aval )
 }
 
 
-static void BtoH( u8 val, char *S )
-{
-    s8 k;
 
-    for( k=1; k >= 0; --k )
-    {
-        S[k]   = hexv[val & 0xF];
-        val  >>= 4;
-    }
-
-    S[2] = 0;
-}
-
-static void ItoH( u32 val, char *S )
-{
-    s8  k;
-
-    for( k=7; k >= 0; --k )
-    {
-        S[k]   = hexv[val & 0xF];
-        val  >>= 4;
-    }
-
-    S[8] = 0;
-}
 
 
 

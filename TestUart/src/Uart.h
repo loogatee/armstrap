@@ -1,12 +1,6 @@
-/*
- * SerialOutp.h
- *
- *  Created on: Jan 30, 2018
- *      Author: johnr
- */
 
-#ifndef SERIALOUTP_H_
-#define SERIALOUTP_H_
+#ifndef _UART_H_
+#define _UART_H_
 
 
 #define SERO_TYPE_ONECHAR    0x01
@@ -19,10 +13,9 @@
 
 
 
-
+// Uart2 output
 void U2_Init(void);
 void U2_Process(void);
-
 
 void U2_PrintCH(char ch);
 void U2_PrintSTR(const char *pstr);
@@ -32,6 +25,12 @@ void U2_Print8(const char *pstr,  uint8_t val);
 void U2_Print8N(const char *pstr,  uint8_t val);
 void U2_Send(uint32_t otype, char *sptr, uint32_t *completionptr, uint32_t aval);
 
+// Uart2 input
+void U2Inp_Init(void);
+void U2Inp_Process(void);
+void U2Inp_SignalCmdDone(void);
 
 
-#endif /* SERIALOUTP_H_ */
+
+
+#endif

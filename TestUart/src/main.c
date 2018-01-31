@@ -1,9 +1,11 @@
 
 #include "stm32f4xx.h"
-#include "SerialOutp.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include "proj_common.h"
+#include "Uart.h"
+#include "Cmds.h"
 
 
 #define  TICK_INT_PRIORITY            ((uint32_t)0x0F)       /*!< tick interrupt priority */
@@ -24,24 +26,28 @@ static void     init_hw(void);
 static uint32_t GetSysTick( void );
 static uint32_t GetSysDelta( uint32_t OriginalTime );
 
-static char jbuf[50];
+//static char jbuf[50];
 
 
 
 int main(void)
 {
-    uint32_t  Ntime,n1,i;
+    uint32_t  Ntime;
 
     Globals.SysTicks = 0;
-    n1 = Ntime       = 0;
-    i                = 0;
+    Ntime            = 0;
 
-    U2_Init();    // data structures only.  No HW is init'ed here
+    U2_Init();
+    U2Inp_Init();
+    CMDS_Init();
     init_hw();
 
     while(1)
     {
     	U2_Process();
+    	U2Inp_Process();
+    	CMDS_Process();
+
 
     	if( GetSysDelta(Ntime) >= 1000 )           // 1000ms is 1 second
     	{
@@ -49,15 +55,6 @@ int main(void)
             Ntime = GetSysTick();                  //   re-init the counter
     	}
 
-    	if( GetSysDelta(n1) >= 400 )               // 400 Milliseconds
-    	{
-    		i++;                                   //   simple counter increment
-    		//U2_Print32("i = ", i);               //   usart2 test, print something out every 400ms
-
-    		sprintf(jbuf,"hEllo %d\n\r",(int)i);
-    		U2_PrintSTR( jbuf );
-    	    n1 = GetSysTick();                     //   re-init counter
-    	}
     }
 
     return 0;                                      // if this executes, then Weird happened!
