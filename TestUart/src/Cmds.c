@@ -194,7 +194,7 @@ static bool cmds_MD( u32 state )
     {
     case DO_INIT:
 
-    	if( strlen(cmds_InpPtr) > 2 ) { cmds_word1 = HtoI(&cmds_InpPtr[3]) & 0xFFFFFFFC; }
+        if( strlen(cmds_InpPtr) > 2 ) { cmds_word1 = HtoI(&cmds_InpPtr[3]) & 0xFFFFFFFC; }
         cmds_count1        = 0;
         cmds_state_machine = CMDSM_MEMDUMP;
         cmds_completion    = 1;
@@ -314,26 +314,26 @@ static bool cmds_ST( void )
 
 static bool cmds_SC( void )
 {
-	uint32_t tmp;
+    uint32_t tmp;
     RCC_ClocksTypeDef  rclocks;
 
     tmp = RCC->CFGR & RCC_CFGR_SWS;
     if( tmp == 0 )
-    	U2_PrintSTR("HSI\n\r");
+        U2_PrintSTR("HSI\n\r");
     else if( tmp == 4 )
-    	U2_PrintSTR("HSE\n\r");
+        U2_PrintSTR("HSE\n\r");
     else
-    	U2_PrintSTR("PLL\n\r");
+        U2_PrintSTR("PLL\n\r");
 
     SystemCoreClockUpdate();
-	RCC_GetClocksFreq(&rclocks);
+    RCC_GetClocksFreq(&rclocks);
 
-	U2_Print32( "SYSCLK: ", rclocks.SYSCLK_Frequency );
-	U2_Print32( "HCLK:   ", rclocks.HCLK_Frequency   );
-	U2_Print32( "PCLK1:  ", rclocks.PCLK1_Frequency  );
-	U2_Print32( "PCLK2:  ", rclocks.PCLK2_Frequency  );
+    U2_Print32( "SYSCLK: ", rclocks.SYSCLK_Frequency );
+    U2_Print32( "HCLK:   ", rclocks.HCLK_Frequency   );
+    U2_Print32( "PCLK1:  ", rclocks.PCLK1_Frequency  );
+    U2_Print32( "PCLK2:  ", rclocks.PCLK2_Frequency  );
 
-	U2_Print32( "RCC->APB1ENR:  ", RCC->APB1ENR  );
+    U2_Print32( "RCC->APB1ENR:  ", RCC->APB1ENR  );
 
     return TRUE;
 }

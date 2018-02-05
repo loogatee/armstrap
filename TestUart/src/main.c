@@ -46,16 +46,16 @@ int main(void)
 
     while(1)
     {
-    	U2_Process();
-    	U2Inp_Process();
-    	CMDS_Process();
+        U2_Process();
+        U2Inp_Process();
+        CMDS_Process();
 
 
-    	if( GetSysDelta(Ntime) >= 750 )            // number is in miilliseconds
-    	{
+        if( GetSysDelta(Ntime) >= 750 )            // number is in miilliseconds
+        {
             GPIO_ToggleBits(GPIOC, GPIO_Pin_1);    //   Toggles the User Led per Delta interval
             Ntime = GetSysTick();                  //   re-init the counter
-    	}
+        }
 
     }
 
@@ -114,28 +114,28 @@ static void init_gpios(void)
 
 static void init_usart2()
 {
-	USART_InitTypeDef U2;
-	USART_InitTypeDef U6;
+    USART_InitTypeDef U2;
+    USART_InitTypeDef U6;
 
-	USART_StructInit( &U2 );
-	  U2.USART_BaudRate            = 9600;
-	  U2.USART_WordLength          = USART_WordLength_8b;
-	  U2.USART_StopBits            = USART_StopBits_1;
-	  U2.USART_Parity              = USART_Parity_No;
-	  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init( USART2, &U2    );
-	USART_Cmd ( USART2, ENABLE );
+    USART_StructInit( &U2 );
+      U2.USART_BaudRate            = 9600;
+      U2.USART_WordLength          = USART_WordLength_8b;
+      U2.USART_StopBits            = USART_StopBits_1;
+      U2.USART_Parity              = USART_Parity_No;
+      U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+      U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+    USART_Init( USART2, &U2    );
+    USART_Cmd ( USART2, ENABLE );
 
-	USART_StructInit( &U6 );
-	  U6.USART_BaudRate            = 9600;
+    USART_StructInit( &U6 );
+      U6.USART_BaudRate            = 9600;
       U6.USART_WordLength          = USART_WordLength_8b;
-	  U6.USART_StopBits            = USART_StopBits_1;
-	  U6.USART_Parity              = USART_Parity_No;
-	  U6.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	  U6.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init( USART6, &U6    );
-	USART_Cmd ( USART6, ENABLE );
+      U6.USART_StopBits            = USART_StopBits_1;
+      U6.USART_Parity              = USART_Parity_No;
+      U6.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+      U6.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+    USART_Init( USART6, &U6    );
+    USART_Cmd ( USART6, ENABLE );
 }
 
 

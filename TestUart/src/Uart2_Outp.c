@@ -149,8 +149,8 @@ void U2_Process( void )
           if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
           USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
 #else
-    	  if( !(USART6->SR & USART_FLAG_TC) ) { return; }
-    	  USART6->DR     = *serd_active_Qitem->sr_sptr++;
+          if( !(USART6->SR & USART_FLAG_TC) ) { return; }
+          USART6->DR     = *serd_active_Qitem->sr_sptr++;
 #endif
 
 
@@ -216,21 +216,21 @@ void U2_Print8N( const char *pstr, u8 val )
 }
 
 
-int _write( void *fp, char *buf, uint32_t len )
+int _write( void *fp, char *buf, u32 len )
 {
-	u32  remaining = LEN_PRINTF_BUF - serd_pfindex;
+    u32  remaining = (LEN_PRINTF_BUF - serd_pfindex);
 
-    if( remaining < (len+2)) { serd_pfindex = 0; U2_PrintSTR("wrapped\n");}                  // if it won't fit, wrap
+    if( remaining < (len+2) ) { serd_pfindex=0; }                    // if it won't fit, wrap
 
-	strncpy((void *)&serd_pfbuf[serd_pfindex], buf, len);
-	U2_PrintSTR( (const char *)&serd_pfbuf[serd_pfindex] );
+    strncpy((void *)&serd_pfbuf[serd_pfindex], buf, len);
+    U2_PrintSTR( (const char *)&serd_pfbuf[serd_pfindex] );
 
-	serd_pfindex               += len;
-	serd_pfbuf[serd_pfindex++]  = 0;
+    serd_pfindex               += len;
+    serd_pfbuf[serd_pfindex++]  = 0;
 
-	if( serd_pfindex >= (LEN_PRINTF_BUF - 6)) { serd_pfindex=0; }
+    if( serd_pfindex >= (LEN_PRINTF_BUF - 6) ) { serd_pfindex=0; }   // wrap if its close to the end
 
-	return len;
+    return len;
 }
 
 
