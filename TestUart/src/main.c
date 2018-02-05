@@ -42,6 +42,8 @@ int main(void)
     CMDS_Init();
     init_hw();
 
+    CMDS_DisplayVersion();
+
     while(1)
     {
     	U2_Process();
@@ -49,7 +51,7 @@ int main(void)
     	CMDS_Process();
 
 
-    	if( GetSysDelta(Ntime) >= 1000 )           // 1000ms is 1 second
+    	if( GetSysDelta(Ntime) >= 100 )           // 1000ms is 1 second
     	{
             GPIO_ToggleBits(GPIOC, GPIO_Pin_1);    //   Toggles the User Led every 1 second
             Ntime = GetSysTick();                  //   re-init the counter
@@ -60,34 +62,53 @@ int main(void)
     return 0;                                      // if this executes, then Weird happened!
 }
 
-
+//
+//   I'm keeping USART6 alive because on 1 of my boards,
+//   the RX pin on the ftdi port doesn't work:
+//        - The pin is PD6,USART2_RX
+//
+//   So in a pinch, (and for that board only), I will remap the console to U6.
+//   Maybe a jumper, and run-time it!
+//
 static void init_gpios(void)
 {
     GPIO_InitTypeDef UserLed_gpio;
-    GPIO_InitTypeDef Usart2_gpio;
+    GPIO_InitTypeDef UsartX_gpio;
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,  ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,  ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);     // note USART6 on APB2
 
 
     GPIO_StructInit(&UserLed_gpio);
       UserLed_gpio.GPIO_Mode  = GPIO_Mode_OUT;
-      UserLed_gpio.GPIO_Pin   = GPIO_Pin_1 | GPIO_Pin_6;
+      UserLed_gpio.GPIO_Pin   = GPIO_Pin_1;
       UserLed_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
       UserLed_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOC, &UserLed_gpio);
 
-    GPIO_StructInit(&Usart2_gpio);
-      Usart2_gpio.GPIO_Mode  = GPIO_Mode_AF;
-      Usart2_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin 5 (TX), Pin 6 (RX)
-      Usart2_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
-      Usart2_gpio.GPIO_Speed = GPIO_Speed_50MHz;
-      Usart2_gpio.GPIO_OType = GPIO_OType_PP;
-    GPIO_Init(GPIOD, &Usart2_gpio);
+    GPIO_StructInit(&UsartX_gpio);
+      UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin 5 (TX), Pin 6 (RX)
+      UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
+      UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
+      UsartX_gpio.GPIO_OType = GPIO_OType_PP;
+    GPIO_Init(GPIOD, &UsartX_gpio);
+
+    GPIO_StructInit(&UsartX_gpio);
+      UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;            // 6 tx, 7 rx   are USART6
+      UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
+      UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
+      UsartX_gpio.GPIO_OType = GPIO_OType_PP;
+    GPIO_Init(GPIOC, &UsartX_gpio);
 
     GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);      // The RX and TX pins are now connected to their AF
     GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);      //   so that the USART2 can take over control of the pins
+
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);      // USART6 alternative function  6 is TX
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);      //   7 is RX
 }
 
 
@@ -103,8 +124,17 @@ static void init_usart2()
 	  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
 	USART_Init( USART2, &U2 );
+	USART_Cmd ( USART2, ENABLE );
 
-	USART_Cmd( USART2, ENABLE );
+	USART_StructInit( &U2 );
+		  U2.USART_BaudRate            = 9600;
+		  U2.USART_WordLength          = USART_WordLength_8b;
+		  U2.USART_StopBits            = USART_StopBits_1;
+		  U2.USART_Parity              = USART_Parity_No;
+		  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+		  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+	USART_Init( USART6, &U2 );
+	USART_Cmd ( USART6, ENABLE );
 }
 
 
@@ -156,7 +186,6 @@ static uint32_t GetSysDelta( uint32_t OriginalTime )
 
 void main_systick_handler(void)
 {
-    //GPIO_ToggleBits(GPIOC, GPIO_Pin_6);
     ++Globals.SysTicks;
 }
 

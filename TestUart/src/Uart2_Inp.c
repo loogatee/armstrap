@@ -41,9 +41,13 @@ void U2Inp_Process( void )
     {
     case SERI_STATE_GETCHARS:
 
+#ifdef USE_FTDI_PORT
         if( !(USART2->SR & USART_FLAG_RXNE) ) { return; }                             // RXNE=1 when a byte is available
-
         seri_ch = (USART2->DR & 0xff);
+#else
+    	if( !(USART6->SR & USART_FLAG_RXNE) ) { return; }                             // RXNE=1 when a byte is available
+    	seri_ch = (USART6->DR & 0xff);
+#endif
 
         if( seri_ch == ASCII_CARRIAGERETURN || seri_ch == ASCII_LINEFEED )
         {

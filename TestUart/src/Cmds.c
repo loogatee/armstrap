@@ -33,6 +33,7 @@ static volatile u32     cmds_xtest;
 static bool cmds_R ( void );
 static bool cmds_T ( void );
 static bool cmds_MD( u32 state );
+static bool cmds_SC( void );
 
 //static bool cmds_A ( u32 state );
 //static bool cmds_Z ( u32 state );
@@ -77,9 +78,9 @@ void CMDS_Process(void)
         {
             signal_done = cmds_R();
         }
-        else if( cmds_InpPtr[0] == 's' && cmds_InpPtr[1] == 't')
+        else if( cmds_InpPtr[0] == 's' && cmds_InpPtr[1] == 'c')
         {
-            ;//cmds_ST();
+            cmds_SC();
         }
         else if( cmds_InpPtr[0] == 't' )
         {
@@ -301,3 +302,65 @@ static bool cmds_ST( void )
     return TRUE;
 }
 */
+
+
+
+
+static bool cmds_SC( void )
+{
+	uint32_t tmp;
+    RCC_ClocksTypeDef  rclocks;
+
+    tmp = RCC->CFGR & RCC_CFGR_SWS;
+    if( tmp == 0 )
+    	U2_PrintSTR("HSI\n\r");
+    else if( tmp == 4 )
+    	U2_PrintSTR("HSE\n\r");
+    else
+    	U2_PrintSTR("PLL\n\r");
+
+    SystemCoreClockUpdate();
+	RCC_GetClocksFreq(&rclocks);
+
+	U2_Print32( "SYSCLK: ", rclocks.SYSCLK_Frequency );
+	U2_Print32( "HCLK:   ", rclocks.HCLK_Frequency   );
+	U2_Print32( "PCLK1:  ", rclocks.PCLK1_Frequency  );
+	U2_Print32( "PCLK2:  ", rclocks.PCLK2_Frequency  );
+
+	U2_Print32( "RCC->APB1ENR:  ", RCC->APB1ENR  );
+
+    return TRUE;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

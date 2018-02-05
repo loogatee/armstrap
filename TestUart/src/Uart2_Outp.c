@@ -55,9 +55,10 @@ void U2_Init( void )
 //  This is the 'Front End' or Producer of Serial Data.   The idea is to stash the
 //  parameters quickly in a Queue, then let the 'Back End' (the Consumer) process the
 //  data off the Queue, and perform the printing.
-//  The data is destined for USART2
+//  The data is destined for USART2.
+//     **Note the use of void for return. Alternative is return -1 when Q is full.
+//       Consider using completionptr to let the Q drain, then keep printing.
 //
-//  Parameters:
 //
 //        otype - The type of output requested.  see SERO_TYPE_ defines
 //
@@ -88,7 +89,7 @@ void U2_Send( u32 otype, char *sptr, u32 *completionptr, u32 aval )
         if( completionptr ) { *completionptr = 0; }                             // if pointer is valid, store 0, indicating Not Done
     }
                                                                                 // Else the Q is full.  Effectively tosses the data
-}
+}                                                                               //   note intention not to return -1 if Q is full
 
 
 
@@ -139,9 +140,16 @@ void U2_Process( void )
 
     case SERO_STATE_DOCHARS:                                                        // Actively printing out characters
 
-    	if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
+#ifdef USE_FTDI_PORT
+          if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
+          USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
+#else
+    	  if( !(USART6->SR & USART_FLAG_TC) ) { return; }
+    	  USART6->DR     = *serd_active_Qitem->sr_sptr++;
+#endif
 
-        USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
+
+
         end_of_string  = *serd_active_Qitem->sr_sptr;                               // Examine character just past the one printed
 
         if( end_of_string == 0 )                                                    // Found the string terminator ?

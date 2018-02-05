@@ -3,6 +3,11 @@
 #define _UART_H_
 
 
+#define USE_FTDI_PORT
+
+
+
+
 #define SERO_TYPE_ONECHAR    0x01
 #define SERO_TYPE_STR        0x02
 #define SERO_TYPE_32         0x03
