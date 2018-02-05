@@ -61,11 +61,11 @@ int main(void)
 
     while(1)
     {
-    	if( GetSysDelta(Ntime) >= 1000 )
-    	{
+        if( GetSysDelta(Ntime) >= 1000 )
+        {
             GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
             Ntime = GetSysTick();
-    	}
+        }
     }
 
     return 0;
