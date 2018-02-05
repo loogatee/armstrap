@@ -26,7 +26,7 @@ static void     init_hw(void);
 static uint32_t GetSysTick( void );
 static uint32_t GetSysDelta( uint32_t OriginalTime );
 
-//static char jbuf[50];
+
 
 
 
@@ -51,9 +51,9 @@ int main(void)
     	CMDS_Process();
 
 
-    	if( GetSysDelta(Ntime) >= 100 )           // 1000ms is 1 second
+    	if( GetSysDelta(Ntime) >= 750 )            // number is in miilliseconds
     	{
-            GPIO_ToggleBits(GPIOC, GPIO_Pin_1);    //   Toggles the User Led every 1 second
+            GPIO_ToggleBits(GPIOC, GPIO_Pin_1);    //   Toggles the User Led per Delta interval
             Ntime = GetSysTick();                  //   re-init the counter
     	}
 
@@ -90,7 +90,7 @@ static void init_gpios(void)
 
     GPIO_StructInit(&UsartX_gpio);
       UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
-      UsartX_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin 5 (TX), Pin 6 (RX)
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin D5 (TX), Pin D6 (RX) = USART2
       UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
       UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
       UsartX_gpio.GPIO_OType = GPIO_OType_PP;
@@ -98,7 +98,7 @@ static void init_gpios(void)
 
     GPIO_StructInit(&UsartX_gpio);
       UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
-      UsartX_gpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;            // 6 tx, 7 rx   are USART6
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;            // C6 tx, C7 rx = USART6
       UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
       UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
       UsartX_gpio.GPIO_OType = GPIO_OType_PP;
@@ -115,6 +115,7 @@ static void init_gpios(void)
 static void init_usart2()
 {
 	USART_InitTypeDef U2;
+	USART_InitTypeDef U6;
 
 	USART_StructInit( &U2 );
 	  U2.USART_BaudRate            = 9600;
@@ -123,17 +124,17 @@ static void init_usart2()
 	  U2.USART_Parity              = USART_Parity_No;
 	  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init( USART2, &U2 );
+	USART_Init( USART2, &U2    );
 	USART_Cmd ( USART2, ENABLE );
 
-	USART_StructInit( &U2 );
-		  U2.USART_BaudRate            = 9600;
-		  U2.USART_WordLength          = USART_WordLength_8b;
-		  U2.USART_StopBits            = USART_StopBits_1;
-		  U2.USART_Parity              = USART_Parity_No;
-		  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-		  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init( USART6, &U2 );
+	USART_StructInit( &U6 );
+	  U6.USART_BaudRate            = 9600;
+      U6.USART_WordLength          = USART_WordLength_8b;
+	  U6.USART_StopBits            = USART_StopBits_1;
+	  U6.USART_Parity              = USART_Parity_No;
+	  U6.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	  U6.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+	USART_Init( USART6, &U6    );
 	USART_Cmd ( USART6, ENABLE );
 }
 

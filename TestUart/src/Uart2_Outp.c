@@ -2,6 +2,9 @@
 #include "stm32f4xx.h"
 #include "proj_common.h"
 #include "Uart.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 
 
@@ -12,7 +15,7 @@
 #define SERO_STATE_DOCHARS     1
 #define SERO_SQENTRYS          100
 
-
+#define LEN_PRINTF_BUF         1024
 
 
 typedef struct
@@ -33,8 +36,9 @@ static u32    serd_out_Qindex;                 //   Item will be removed from he
 static SERI  *serd_active_Qitem;               //   pointer to currently active item
 static SERI   serd_Q_items[SERO_SQENTRYS];     //   Serial Job Data Items
 static u32    serd_ostate_machine;             //   holds state of Serial Output machine
-static char   serd_databuf[11];                //   data buffer for value conversion
-
+static char   serd_databuf[16];                //   data buffer for value conversion
+static u8     serd_pfbuf[LEN_PRINTF_BUF];
+static u32    serd_pfindex;
 
 
 
@@ -47,6 +51,7 @@ void U2_Init( void )
     serd_inn_Qindex     = 0;
     serd_out_Qindex     = 0;
     serd_ostate_machine = SERO_STATE_GETJOB;
+    serd_pfindex        = 0;
 }
 
 
@@ -209,4 +214,31 @@ void U2_Print8N( const char *pstr, u8 val )
 {
     U2_Send( SERO_TYPE_8N, (char *)pstr, 0, (u32)val );
 }
+
+
+int _write( void *fp, char *buf, uint32_t len )
+{
+	u32  remaining = LEN_PRINTF_BUF - serd_pfindex;
+
+    if( remaining < (len+2)) { serd_pfindex = 0; U2_PrintSTR("wrapped\n");}                  // if it won't fit, wrap
+
+	strncpy((void *)&serd_pfbuf[serd_pfindex], buf, len);
+	U2_PrintSTR( (const char *)&serd_pfbuf[serd_pfindex] );
+
+	serd_pfindex               += len;
+	serd_pfbuf[serd_pfindex++]  = 0;
+
+	if( serd_pfindex >= (LEN_PRINTF_BUF - 6)) { serd_pfindex=0; }
+
+	return len;
+}
+
+
+
+
+
+
+
+
+
 

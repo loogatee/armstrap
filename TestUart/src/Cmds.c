@@ -173,6 +173,12 @@ static bool cmds_T( void )
         tmp32 = (u32)*((u32 *)SAFE_MEM_ADDR);
         U2_Print32( "*0x20006400 = ", tmp32 );
     }
+    else if( cmds_InpPtr[1] == '3' )
+    {
+        tmp32 = 1234567;
+        printf("testing, tmp32 = %d\n\r",(int)tmp32);
+        printf("This is Only Just a Test %s   %d    0x%x\n\r","hello world",(int)tmp32,0x1234567);
+    }
     
     return TRUE;
 }
