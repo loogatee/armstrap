@@ -6,6 +6,8 @@
  */
 
 #include "stm32f4xx.h"
+#include <stdio.h>
+#include <string.h>
 
 
 
@@ -27,6 +29,7 @@ void BtoH( u8 val, char *S )
 
     S[2] = 0;
 }
+
 
 
 void ItoH( u32 val, char *S )
@@ -91,3 +94,40 @@ int AtoI( const char *p )
 
     return(f ? -n : n);
 }
+
+
+uint16_t HtoU16( char *pstr )
+{
+    uint8_t    i,j;
+    uint16_t   ch,sum;
+
+    switch( strlen(pstr) )
+    {
+        case 1:   j = 0;  break;
+        case 2:   j = 4;  break;
+        default:  j = 8;  break;
+    }
+
+    for( i=0,sum=0; pstr[i] && i < 3; ++i,j-=4 )
+    {
+        ch = pstr[i];
+
+        if     ( ch >= '0' && ch <= '9' ) ch -= '0';
+        else if( ch >= 'A' && ch <= 'F' ) ch -= '7';
+        else if( ch >= 'a' && ch <= 'f' ) ch -= 'W';
+        else                              ch  = 0;
+
+        sum = sum | ( ch << j );
+    }
+    return sum;
+}
+
+
+
+
+
+
+
+
+
+

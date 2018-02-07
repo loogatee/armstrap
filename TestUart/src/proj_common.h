@@ -49,11 +49,29 @@ typedef unsigned int     BOOL;
 
 
 
-void     BtoH( u8  val, char *S );
-void     ItoH( u32 val, char *S );
-uint32_t HtoI( const char *ptr  );
-int      AtoI( const char *p    );
-
+void     BtoH( u8  val, char *S  );
+void     ItoH( u32 val, char *S  );
+uint32_t HtoI( const char *ptr   );
+int      AtoI( const char *p     );
+uint16_t HtoU16( char *pstr      );
 
 
 #endif /* PROJ_COMMON_H_ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
