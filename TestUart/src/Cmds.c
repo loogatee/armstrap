@@ -341,6 +341,7 @@ static bool cmds_Z( u8 state )
 
 */
 
+// Set Time
 //
 //  012345678901234567890
 //  st 38 12 03 31 01 17
@@ -387,7 +388,10 @@ static bool cmds_ST( void )
 
 
 
-
+// show clock
+//
+//    debug:  shows some clock registers
+//
 static bool cmds_SC( void )
 {
     uint32_t tmp;
