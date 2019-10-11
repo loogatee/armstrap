@@ -32,7 +32,7 @@ static uint32_t GetSysTick( void );
 static uint32_t GetSysDelta( uint32_t OriginalTime );
 
 extern void xinu_platforminit(void);
-
+extern int  XinuSysinit(void);
 
 int main(void)
 {
@@ -57,10 +57,14 @@ int main(void)
     		PF->cpuid_PartNo, PF->cpuid_Revision);
 
     U2_Print32N( "DeviceID:   ", PF->devid0 );
-    U2_Print32N(            " ", PF->devid1 );
-    U2_Print32 (            " ", PF->devid2 );
+    U2_Print32N(            ".", PF->devid1 );
+    U2_Print32 (            ".", PF->devid2 );
 
-    printf( "Flash size: %dk\n\r", PF->flashsize );
+    printf( "Flash size: %dk\n\r\n", PF->flashsize );
+
+    printf( "Platform: %s, %s\n\r",PF->family, PF->name);
+
+    XinuSysinit();
 
     while(1)
     {

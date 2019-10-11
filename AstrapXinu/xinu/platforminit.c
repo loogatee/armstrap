@@ -34,10 +34,12 @@ int xinu_platforminit( void )
 {
 	uint  tmpreg;
 
+
     strncpy(platform.name,   "Armstrap407VE", PLT_STRMAX);
     strncpy(platform.family, "ARM",           PLT_STRMAX);
 
-    platform.maxaddr = (void *)(&_estack);
+    tmpreg = (uint)&_estack - 0x100;
+    platform.maxaddr = (void *)tmpreg;
     platform.clkfreq = 168000000;
 
 
