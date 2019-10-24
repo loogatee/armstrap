@@ -38,7 +38,7 @@ typedef struct
     volatile uint32_t   SysTicks;
 } GLOBALS_t;
 
-
+// hello there!
 
 static GLOBALS_t   Globals;
 
@@ -47,12 +47,13 @@ static void     init_hw(void);
 static uint32_t GetSysTick( void );
 static uint32_t GetSysDelta( uint32_t OriginalTime );
 
-
+extern int  testX( void );
 
 
 int main(void)
 {
     uint32_t  Ntime;
+    int       zz;
 
     Globals.SysTicks = 0;
     Ntime            = 0;
@@ -61,10 +62,12 @@ int main(void)
 
     while(1)
     {
-        if( GetSysDelta(Ntime) >= 1000 )
+        if( GetSysDelta(Ntime) >= 5000 )
         {
             GPIO_ToggleBits(GPIOC, GPIO_Pin_1);
             Ntime = GetSysTick();
+            zz = testX();
+            if( zz == 192 ) { GPIO_ToggleBits(GPIOC, GPIO_Pin_1); }
         }
     }
 
@@ -105,7 +108,8 @@ static void init_hw()
 
     NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-    SysTick_Config(rclocks.HCLK_Frequency / 1000);      // 168000000 / 1000 = 168000
+    //SysTick_Config(rclocks.HCLK_Frequency / 1000);      // 168000000 / 1000 = 168000
+    SysTick_Config(rclocks.HCLK_Frequency / 10000);      // 168000000 / 1000 = 168000
 
     prioritygroup = NVIC_GetPriorityGrouping();
 
@@ -129,6 +133,7 @@ static uint32_t GetSysDelta( uint32_t OriginalTime )
         return( v - OriginalTime );
     else
         return( ~OriginalTime + 1 + v );
+
 }
 
 
