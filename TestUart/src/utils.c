@@ -31,6 +31,17 @@ void BtoH( u8 val, char *S )
 }
 
 
+void BtoHnz( u8 val, char *S )
+{
+    s8 k;
+
+    for( k=1; k >= 0; --k )
+    {
+        S[k]   = hexv[val & 0xF];
+        val  >>= 4;
+    }
+}
+
 
 void ItoH( u32 val, char *S )
 {
