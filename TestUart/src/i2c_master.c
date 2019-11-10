@@ -6,6 +6,7 @@
 //#include "gpio_CDC3.h"
 #include "i2c.h"
 #include "timer.h"
+#include "Utils.h"
 
 
 
@@ -80,7 +81,7 @@ static u8       i2c_1_read_substate;
 
 
 
-static u8  i2c_1_do_write_substate( void );
+static u8  i2c_1_do_write_substate( unsigned int   wait_type );
 //static u8  i2c_1_do_read_substate ( void );
 
 
@@ -165,11 +166,13 @@ void I2C_master_Process( void )
 
     if( i2c_1_state != I2C_STATE_GETJOB )                                         // If the state machine is active
     {
-        if( GetSysDelta( i2c_1_starttime ) >= TIMEOUT_VAL )                     // Safety valve: too long to complete this job ?
+        if( GetSysDelta( i2c_1_starttime ) >= TIMEOUT_VAL )                       // Safety valve: too long to complete this job ?
         {
-            //STM_REGISTER I2C1->CR1 |= I2C_CR1_STOP;                                    //     Send Stop!   Terminates I2C protocol machine
+            STM_REGISTER I2C1->CR1 |= I2C_CR1_STOP;                               //     Send Stop!   Terminates I2C protocol machine
+            RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
+            RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
 
-            //U2_Print8( "TO! i2c_1_state: ", i2c_1_state );                       //     Message out to debug port (optional)
+            //U2_Print8( "TO! i2c_1_state: ", i2c_1_state );                      //     Message out to debug port (optional)
           	U2_Print32("to SR1: ",I2C1->SR1);
             U2_Print32("to SR2: ",I2C1->SR2);
 
@@ -241,7 +244,7 @@ void I2C_master_Process( void )
 
     case I2C_STATE_WRITE_SLAVEADDR:
             
-        if( (tmpb = i2c_1_do_write_substate()) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
+        if( (tmpb = i2c_1_do_write_substate(1)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
             
         if( tmpb == RTN_RESTART )                                                 // Test for the RESTART return value
         {                                                                         //    RESTART indicates some error was detected
@@ -254,16 +257,12 @@ void I2C_master_Process( void )
         FALL_THRU;                                                                //    no need to break
 
 
-        //#define  I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED        ((uint32_t)0x00070082)  /* BUSY, MSL, ADDR, TXE and TRA flags */
-        //I2C_GenerateSTART(I2C_FLAG_BUSY)
-        //I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT)
-        cleanup();
 
-#ifdef NOTFRIGGINYET
+
 
     case I2C_STATE_WRITE_CMDREG:
 
-        if( (tmpb = i2c_1_do_write_substate()) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
+        if( (tmpb = i2c_1_do_write_substate(2)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
 
         if( tmpb == RTN_RESTART )                                                 // Test for the RESTART return value
         {                                                                         //    RESTART indicates some error was detected
@@ -281,7 +280,7 @@ void I2C_master_Process( void )
             }
 
             i2c_1_state = I2C_STATE_DO_RSEN;                                          // ELSE gonna do a read, new state is DO_RSEN
-            PIC_REGISTER SSP1CON2bits.RSEN = 1;                                       // Bang!  Hit the RSEN bit.
+            //PIC_REGISTER SSP1CON2bits.RSEN = 1;                                       // Bang!  Hit the RSEN bit.
         }
         else
         {
@@ -296,7 +295,7 @@ void I2C_master_Process( void )
 
         if( i2c_1_state == I2C_STATE_WRITE_CMDREG2 )
         {
-            if( (tmpb = i2c_1_do_write_substate()) == RTN_CONTINUE ) { return; }  // Keep calling write_substate while return value says to CONTINUE
+            if( (tmpb = i2c_1_do_write_substate(2)) == RTN_CONTINUE ) { return; }  // Keep calling write_substate while return value says to CONTINUE
 
             if( tmpb == RTN_RESTART )                                             // Test for the RESTART return value
             {                                                                     //    RESTART indicates some error was detected
@@ -308,14 +307,26 @@ void I2C_master_Process( void )
             {                                                                     //    Means nothing to read, need only to write some registers
                 i2c_1_state          = I2C_STATE_DO_WRITEONLY;                    //    new state is DO_WRITEONLY
                 i2c_1_write_data     = *i2c_1_lcwdata ++;                         //    Get the byte to write, and increment pointer thru this list
-          //SER_Print8( "WRITEONLY: ", i2c_1_write_data );
+                //U2_Print8( "WRITEONLY: ", i2c_1_write_data );
                 return;                                                           //    return immediately
             }
 
             i2c_1_state = I2C_STATE_DO_RSEN;                                      // ELSE gonna do a read, new state is DO_RSEN
-            PIC_REGISTER SSP1CON2bits.RSEN = 1;                                   // Bang!  Hit the RSEN bit.
+            //PIC_REGISTER SSP1CON2bits.RSEN = 1;                                   // Bang!  Hit the RSEN bit.
         }
-        FALL_THRU;        
+        FALL_THRU;
+
+    case I2C_STATE_DO_RSEN:
+
+    	if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_BTF) ) { return; }
+
+    	U2_Print32("rsen SR1: ",I2C1->SR1);
+    	U2_Print32("rsen SR2: ",I2C1->SR2);
+
+        cleanup();
+
+#ifdef NOTYET
+
 
     case I2C_STATE_DO_RSEN:
 
@@ -336,7 +347,7 @@ void I2C_master_Process( void )
 
     case I2C_STATE_WRITE_SLAVEADDR_RW:
 
-        if( (tmpb = i2c_1_do_write_substate()) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
+        if( (tmpb = i2c_1_do_write_substate(1)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
 
         if( tmpb == RTN_RESTART )                                                 // Test for the RESTART return value
         {                                                                         //    RESTART indicates some error was detected
@@ -389,7 +400,7 @@ void I2C_master_Process( void )
 
     case I2C_STATE_DO_WRITEONLY:
 
-        if( (tmpb = i2c_1_do_write_substate()) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
+        if( (tmpb = i2c_1_do_write_substate(2)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
 
         if( tmpb == RTN_RESTART )                                                 // Test for the RESTART return value
         {                                                                         //    RESTART indicates some error was detected
@@ -405,7 +416,7 @@ void I2C_master_Process( void )
         }
 
         i2c_1_write_data = *i2c_1_lcwdata++;                                      // Assign the new byte to write, and increment through the list
-        i2c_1_do_write_substate();                                                // kick off write state machine.  No worries about return val
+        i2c_1_do_write_substate(2);                                                // kick off write state machine.  No worries about return val
 
 
 #endif
@@ -417,7 +428,7 @@ void I2C_master_Process( void )
 
 
 
-static u8 i2c_1_do_write_substate( void )
+static u8 i2c_1_do_write_substate( unsigned int  WaitType )
 {
     volatile u8 dummy;
 
@@ -426,30 +437,31 @@ static u8 i2c_1_do_write_substate( void )
     case I2C_WRITE_SUBSTATE_START:
 
     	count3++;
-
-    	//if( I2C1->SR2 & I2C_SR2_BUSY )
-    	//    return RTN_CONTINUE;
-
-        //dummy = STM_REGISTER I2C1->DR;                                // dummy read
     	U2_Print8("slaveaddr: ",i2c_1_write_data);
         STM_REGISTER I2C1->DR = i2c_1_write_data;                     // transmits 1 byte
 
-        //if( PIC_REGISTER SSP1CON1bits.WCOL != 0 )                     // write collision ?
-        //{
-        //    dummy = PIC_REGISTER SSP1BUF;                             //    dummy read
-        //    PIC_REGISTER SSP1CON1bits.WCOL = 0;                       //    clear collision
-        //    return RTN_CONTINUE;                                      //    Stay in this state, will attempt write again
-        //}
+        // PIC is checking for WRITE collisions here
         
         i2c_1_write_substate = I2C_WRITE_SUBSTATE_WAITCOMPLETE;       // Success on write, transition to next state
         FALL_THRU;
-        //WaitSR1FlagsSet(I2C_SR1_ADDR);
 
+    //
+    // #define  I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED        ((uint32_t)0x00070082)  /* BUSY, MSL, ADDR, TXE and TRA flags */
+    //   SR1:
+    //         Addr  bit1
+    //         TxE   bit7
+    //   SR2:
+    //         MSL   bit0
+    //         BUSY  bit1
+    //         TRA   bit2
+    //
     case I2C_WRITE_SUBSTATE_WAITCOMPLETE:
 
     	//if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_ADDR) )
-    	if( I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == 0 )
-        {
+    	if( WaitType == 1 )
+    	{
+    	    if( I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == 0 )
+            {
             //if( PIC_REGISTER PIR2bits.BCL1IF != 0 )                   // Always check for bus collision, and if set:
             //{
             //   PIC_REGISTER PIR2bits.BCL1IF  = 0;                     //       Clr collisionBit
@@ -457,11 +469,17 @@ static u8 i2c_1_do_write_substate( void )
             //   i2c_1_write_substate = I2C_WRITE_SUBSTATE_START;       //       Will re-send the byte
             //   return RTN_RESTART;                                    //       transition states for attempt to resend
             //}
-            return RTN_CONTINUE;                                      //  stay here, keep looking for BF to be 0
-        }
+                return RTN_CONTINUE;                                      //  stay here, keep looking for BF to be 0
+            }
+    	}
+    	else if( WaitType == 2 )
+    	{
+            if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_TXE) ) { return RTN_CONTINUE; }
+    	}
 
         count4++;
     	dummy = STM_REGISTER I2C1->SR2;
+    	hammer(dummy);
         i2c_1_write_substate = I2C_WRITE_SUBSTATE_IDLE_ACK;           //  BF cleared!  Now look for IDLE ACK
         FALL_THRU;
 

@@ -134,7 +134,10 @@ uint16_t HtoU16( char *pstr )
 }
 
 
-
+void hammer( u8 nparm )
+{
+	;
+}
 
 
 
