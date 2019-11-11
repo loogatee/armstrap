@@ -13,7 +13,7 @@
 #define VERSION_STR     "Armstrap TestUart Version 1_"
 #define VERSION_MAJOR   1
 #define VERSION_MINOR   1
-#define VERSION_DATE    "02/04/2018 19:30\r\n"
+#define VERSION_DATE    "11/09/2019 13:21\r\n"
 
 
 
@@ -37,6 +37,7 @@
 
 
 #define FALL_THRU
+#define STM_REGISTER
 
 
 

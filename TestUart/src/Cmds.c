@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "Cmds.h"
+#include "i2c.h"
+#include "xRTC.h"
 
 #define  SAFE_MEM_ADDR           0x20006400
 
@@ -51,9 +53,21 @@ static bool cmds_MD( u32 state );
 static bool cmds_SC( void );
 static bool cmds_rtc( void );
 
-//static bool cmds_A ( u32 state );
-//static bool cmds_Z ( u32 state );
+static bool cmds_A ( u32 state );
+//static bool cmds_C ( u32 state );
 static bool cmds_ST( void );
+
+
+
+
+
+extern u32 count1;
+extern u32 count2;
+extern u32 count3;
+extern u32 count4;
+
+
+
 
 
 
@@ -79,9 +93,11 @@ void CMDS_Process(void)
         cmds_input_ready = FALSE;
         
         if( cmds_InpPtr[0] == 'a' )
-            ;//signal_done = cmds_A( DO_INIT );
+            signal_done = cmds_A( DO_INIT );
         else if( cmds_InpPtr[0] == 'b' )
         	signal_done = cmds_B();
+        //else if( cmds_InpPtr[0] == 'c')
+        //	signal_done = cmds_C();
         else if( cmds_InpPtr[0] == 'm' && cmds_InpPtr[1] == 'd')
             signal_done = cmds_MD( DO_INIT );
         else if( cmds_InpPtr[0] == 'r' && cmds_InpPtr[1] == 't' && cmds_InpPtr[2] == 'c')
@@ -101,7 +117,7 @@ void CMDS_Process(void)
         break;
         
     case CMDSM_MEMDUMP:      signal_done = cmds_MD( DO_PROCESS );    break;
-    //case CMDSM_RTC_RDONE:    signal_done = cmds_A ( DO_PROCESS );    break;
+    case CMDSM_RTC_RDONE:    signal_done = cmds_A ( DO_PROCESS );    break;
     //case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
         
     }
@@ -221,12 +237,22 @@ static void init_rtc_stuff(void)
 
 
 
+
+
 static bool cmds_B( void )
 {
+	if(strlen(cmds_InpPtr) == 1)
+    {
+	    U2_Print32( "count1: 0x", count1 );
+	    U2_Print32( "count2: 0x", count2 );
+	    U2_Print32( "count3: 0x", count3 );
+        U2_Print32( "count4: 0x", count4 );
+    }
 
     if( cmds_InpPtr[1] == '1' )
     {
-        ;
+    	U2_Print32("SR1: ",I2C1->SR1);
+    	U2_Print32("SR2: ",I2C1->SR2);
     }
     else if( cmds_InpPtr[1] == '2' )
     {
@@ -286,9 +312,9 @@ static bool cmds_MD( u32 state )
     return retv;
 }
 
-/*
 
-static bool cmds_A( u8 state )
+
+static bool cmds_A( u32 state )
 {
     bool retv = FALSE;
     
@@ -296,13 +322,14 @@ static bool cmds_A( u8 state )
     {
     case DO_INIT:
         
-        RTC_GetTime();
-        cmds_state_machine = CMDSM_RTC_RDONE;
+        xRTC_GetTime();
+        //cmds_state_machine = CMDSM_RTC_RDONE;
+        cmds_state_machine=CMDSM_WAITFORLINE; retv=TRUE;
         break;
         
     case DO_PROCESS:
 
-        if( RTC_ShowTime() != RTC_COMPLETION_BUSY )
+        if( xRTC_ShowTime() != RTC_COMPLETION_BUSY )
         {
             cmds_state_machine = CMDSM_WAITFORLINE;
             retv = TRUE;
@@ -313,6 +340,7 @@ static bool cmds_A( u8 state )
     return retv;
 }
 
+/*
 
 static bool cmds_Z( u8 state )
 {
