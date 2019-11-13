@@ -27,7 +27,7 @@ typedef struct
 
 void I2C_master_Init(void);
 void I2C_master_Process(void);
-bool I2C_master_SendCmd(u8 *dptr, u8 *wptr, u8 *complptr, I2CCMDS *lptr);
+bool I2C_master_SendCmd(u8 *dptr, u8 *wptr, u32 *complptr, I2CCMDS *lptr);
 
 
 //extern void I2C_2master_Init(u8 baudrate);

@@ -13,8 +13,7 @@
 #define VERSION_STR     "Armstrap TestUart Version 1_"
 #define VERSION_MAJOR   1
 #define VERSION_MINOR   1
-#define VERSION_DATE    "11/09/2019 13:21\r\n"
-
+#define VERSION_DATE    "11/12/2019 11:12\r\n"
 
 
 
@@ -46,7 +45,19 @@ typedef unsigned int     Bool;
 typedef unsigned int     bool;
 typedef unsigned int     BOOL;
 
+union uW2B
+{
+    u16  w;
+    u8   b[2];
+};
 
+union W4B
+{
+    u32   lw;
+    u8    b[4];
+};
+
+typedef union uW2B   UW2B;
 
 
 

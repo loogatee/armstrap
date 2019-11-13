@@ -7,6 +7,8 @@
 #include "Cmds.h"
 #include "i2c.h"
 #include "xRTC.h"
+#include "Flash.h"
+#include "Utils.h"
 
 #define  SAFE_MEM_ADDR           0x20006400
 
@@ -14,11 +16,13 @@
 #define  CMDSM_WAITFORLINE       0
 #define  CMDSM_MEMDUMP           1
 #define  CMDSM_RTC_RDONE         2
-#define  CMDSM_RTC_WDONE         3
+//#define  CMDSM_RTC_WDONE         3
+#define  CMDSM_FLASH_RDONE       3
 
 #define  DO_INIT                 0
 #define  DO_PROCESS              1
 
+extern void init_gpioI2C( void );
 
 
 static const char *gWeeks[7] =
@@ -40,12 +44,13 @@ static u32    cmds_state_machine;
 static u32    cmds_completion;
 static u32    cmds_word1;
 static u32    cmds_count1;
-
+static UW2B   cmds_addr;
+static u8     cmds_byte1;
 static u8     cmds_TA[6];
 
 static volatile u32     cmds_xtest;
 
-
+static bool cmds_FR( u8 state );
 static bool cmds_R ( void );
 static bool cmds_T ( void );
 static bool cmds_B ( void );
@@ -84,6 +89,7 @@ void CMDS_Init(void)
 void CMDS_Process(void)
 {
     bool  signal_done = TRUE;
+    char  *S=cmds_InpPtr;
     
     switch( cmds_state_machine )
     {
@@ -92,33 +98,24 @@ void CMDS_Process(void)
         if( cmds_input_ready == FALSE ) { return; }
         cmds_input_ready = FALSE;
         
-        if( cmds_InpPtr[0] == 'a' )
-            signal_done = cmds_A( DO_INIT );
-        else if( cmds_InpPtr[0] == 'b' )
-        	signal_done = cmds_B();
-        //else if( cmds_InpPtr[0] == 'c')
-        //	signal_done = cmds_C();
-        else if( cmds_InpPtr[0] == 'm' && cmds_InpPtr[1] == 'd')
-            signal_done = cmds_MD( DO_INIT );
-        else if( cmds_InpPtr[0] == 'r' && cmds_InpPtr[1] == 't' && cmds_InpPtr[2] == 'c')
-            signal_done = cmds_rtc();
-        else if( cmds_InpPtr[0] == 'r' )
-            signal_done = cmds_R();
-        else if( cmds_InpPtr[0] == 's' && cmds_InpPtr[1] == 'c')
-            signal_done = cmds_SC();
-        else if( cmds_InpPtr[0] == 's' && cmds_InpPtr[1] == 't')
-            signal_done = cmds_ST();
-        else if( cmds_InpPtr[0] == 't' )
-            signal_done = cmds_T();
-        else if( cmds_InpPtr[0] == 'v' )
-            signal_done = CMDS_DisplayVersion();
-        else if( cmds_InpPtr[0] == 'z' )
-            ;//signal_done = cmds_Z( DO_INIT );
+        if     ( S[0] == 'a' )                               signal_done = cmds_A( DO_INIT );
+        else if( S[0] == 'b' )                               signal_done = cmds_B();
+      //else if( S[0] == 'c' )                               signal_done = cmds_C();
+        else if( S[0] == 'f' && S[1] == 'r')                 signal_done = cmds_FR( DO_INIT );
+        else if( S[0] == 'm' && S[1] == 'd')                 signal_done = cmds_MD( DO_INIT );
+        else if( S[0] == 'r' && S[1] == 't' && S[2] == 'c')  signal_done = cmds_rtc();
+        else if( S[0] == 'r' )                               signal_done = cmds_R();
+        else if( S[0] == 's' && S[1] == 'c')                 signal_done = cmds_SC();
+        else if( S[0] == 's' && S[1] == 't')                 signal_done = cmds_ST();
+        else if( S[0] == 't' )                               signal_done = cmds_T();
+        else if( S[0] == 'v' )                               signal_done = CMDS_DisplayVersion();
+      //else if( S[0] == 'z' )                               signal_done = cmds_Z( DO_INIT );
         break;
         
     case CMDSM_MEMDUMP:      signal_done = cmds_MD( DO_PROCESS );    break;
     case CMDSM_RTC_RDONE:    signal_done = cmds_A ( DO_PROCESS );    break;
-    //case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
+    case CMDSM_FLASH_RDONE:  signal_done = cmds_FR( DO_PROCESS );    break;
+  //case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
         
     }
 
@@ -241,6 +238,9 @@ static void init_rtc_stuff(void)
 
 static bool cmds_B( void )
 {
+	int i;
+	GPIO_InitTypeDef Xgpio;
+
 	if(strlen(cmds_InpPtr) == 1)
     {
 	    U2_Print32( "count1: 0x", count1 );
@@ -253,19 +253,57 @@ static bool cmds_B( void )
     {
     	U2_Print32("SR1: ",I2C1->SR1);
     	U2_Print32("SR2: ",I2C1->SR2);
+    	U2_Print32("CR1: ",I2C1->CR1);
+    	U2_Print32("CR2: ",I2C1->CR2);
+    	U2_Print32("AFRL: ",GPIOB->AFR[0]);
     }
     else if( cmds_InpPtr[1] == '2' )
     {
-        ;
+    	I2C1->CR1 |= I2C_CR1_SWRST;
+    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   DISABLE);
+    	GPIOB->AFR[0] = 0;
+
+    	GPIO_StructInit(&Xgpio);
+    	      Xgpio.GPIO_Mode  = GPIO_Mode_OUT;
+    	      Xgpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;
+    	      Xgpio.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+    	      Xgpio.GPIO_Speed = GPIO_Speed_50MHz;
+    	GPIO_Init(GPIOB, &Xgpio);
+
+    	GPIO_SetBits(GPIOB, GPIO_Pin_6|GPIO_Pin_7);
     }
     else if( cmds_InpPtr[1] == '3' )
     {
-        ;
-    }
+    	for( i=0; i<12; ++i)
+    	{
+    	    I2C1->CR1 |= I2C_CR1_SWRST;    hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	    I2C1->CR1 &= ~I2C_CR1_SWRST;   hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	    I2C1->CR1 |= I2C_CR1_PE;       hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	    I2C1->CR1 |= I2C_CR1_STOP;
+    	}
 
+    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
+    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
+
+    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   DISABLE);       hammer(STM_REGISTER (u8)I2C1->SR1);   hammer(STM_REGISTER (u8)I2C1->SR2);
+    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);        hammer(STM_REGISTER (u8)I2C1->SR1);   hammer(STM_REGISTER (u8)I2C1->SR2);
+
+    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
+    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
+
+    	for( i=0; i<12; ++i)
+    	{
+    	    I2C1->CR1 |= I2C_CR1_SWRST;    hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	    I2C1->CR1 &= ~I2C_CR1_SWRST;   hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	    I2C1->CR1 |= I2C_CR1_PE;       hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
+    	}
+    }
+    else if( cmds_InpPtr[1] == '4' )
+    {
+    	init_gpioI2C();
+    }
     return TRUE;
 }
-
 
 
 
@@ -484,6 +522,57 @@ static bool cmds_rtc( void )
 }
 
 
+//
+// fr XXXX    where msb <= 0x7F
+// Reads 8 bytes at XXXX\r\n" );
+//
+static bool cmds_FR( u8 state )
+{
+	u8 xx;
+    bool retv = FALSE;
+
+
+    switch( state )
+    {
+    case DO_INIT:
+
+        cmds_addr.w = HtoU16( &cmds_InpPtr[3] );
+        Flash_GetMem16(cmds_addr);
+        cmds_state_machine = CMDSM_FLASH_RDONE;
+        cmds_byte1 = 0;
+
+        break;
+
+    case DO_PROCESS:
+
+        if( (xx=Flash_ShowMem16()) != FLASH_COMPLETION_BUSY )
+        {
+        	if( xx == FLASH_COMPLETION_TIMEOUT )
+        	{
+        	    cmds_state_machine = CMDSM_WAITFORLINE;
+                retv = TRUE;
+        	}
+        	else
+        	{
+                cmds_addr.w += 16;
+
+                if( ++cmds_byte1 == 4 )
+                {
+                    ItoH( cmds_addr.w, &cmds_InpPtr[3] );
+                    cmds_state_machine = CMDSM_WAITFORLINE;
+                    retv = TRUE;
+                }
+                else
+                {
+                    Flash_GetMem16(cmds_addr);
+                }
+        	}
+        }
+        break;
+    }
+
+    return retv;
+}
 
 
 

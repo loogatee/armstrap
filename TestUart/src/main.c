@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "i2c.h"
 #include "xRTC.h"
+#include "Flash.h"
 
 //ARMSTRAP
 #define  TICK_INT_PRIORITY            ((uint32_t)0x0F)       /*!< tick interrupt priority */
@@ -38,6 +39,7 @@ int main(void)
     init_timer();
     I2C_master_Init();
     xRTC_Init();
+    Flash_Init();
     init_hw();
 
 
@@ -70,13 +72,44 @@ int main(void)
 //   So in a pinch, (and for that board only), I will remap the console to U6.
 //   Maybe a jumper, and run-time it!
 //
+void init_gpioI2C(void)
+{
+    GPIO_InitTypeDef I2CX_gpio;
+    I2C_InitTypeDef  I1;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);
+
+    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
+    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
+
+    GPIO_StructInit(&I2CX_gpio);
+      I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;                         // I2C1: B6=SCL, B7=SDA
+      I2CX_gpio.GPIO_Mode   = GPIO_Mode_AF;
+      I2CX_gpio.GPIO_Speed  = GPIO_Speed_100MHz;
+      I2CX_gpio.GPIO_OType  = GPIO_OType_OD;
+    GPIO_Init(GPIOB, &I2CX_gpio);
+
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource6,  GPIO_AF_I2C1);        // Pin6 = I2C1 SCL
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource7,  GPIO_AF_I2C1);        // Pin7 = I2C1 SDA
+
+    I2C_StructInit( &I1 );
+      I1.I2C_ClockSpeed          = 100000;
+      I1.I2C_Mode                = I2C_Mode_I2C;
+      I1.I2C_DutyCycle           = I2C_DutyCycle_2;        // only matters in fast mode
+      I1.I2C_OwnAddress1         = 0;                      // only matters in slave mode: we are the master
+      I1.I2C_Ack                 = I2C_Ack_Enable;
+      I1.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+    I2C_Init( I2C1, &I1    );
+    I2C_Cmd ( I2C1, ENABLE );
+}
+
 static void init_gpios(void)
 {
     GPIO_InitTypeDef UserLed_gpio;
     GPIO_InitTypeDef UsartX_gpio;
-    GPIO_InitTypeDef I2CX_gpio;
+    // GPIO_InitTypeDef I2CX_gpio;
 
-    //RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
+  //RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,  ENABLE);
@@ -85,10 +118,10 @@ static void init_gpios(void)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
     //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);     // note USART6 on APB2
 
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);
+    //RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);
 
-    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
-    RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
+    //RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
+    //RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
 
 
     GPIO_StructInit(&UserLed_gpio);
@@ -106,13 +139,12 @@ static void init_gpios(void)
       UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOD, &UsartX_gpio);
 
-    GPIO_StructInit(&I2CX_gpio);
-      I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;                         // I2C1: B6=SCL, B7=SDA
-      I2CX_gpio.GPIO_Mode   = GPIO_Mode_AF;
-      I2CX_gpio.GPIO_Speed  = GPIO_Speed_100MHz;
-      I2CX_gpio.GPIO_OType  = GPIO_OType_OD;
-      //I2CX_gpio.GPIO_OType  = GPIO_OType_PP;
-    GPIO_Init(GPIOB, &I2CX_gpio);
+    //GPIO_StructInit(&I2CX_gpio);
+    //  I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;                         // I2C1: B6=SCL, B7=SDA
+    //  I2CX_gpio.GPIO_Mode   = GPIO_Mode_AF;
+    //  I2CX_gpio.GPIO_Speed  = GPIO_Speed_100MHz;
+    //  I2CX_gpio.GPIO_OType  = GPIO_OType_OD;
+    //GPIO_Init(GPIOB, &I2CX_gpio);
 
 
     //GPIO_StructInit(&UsartX_gpio);
@@ -140,8 +172,10 @@ static void init_gpios(void)
     //GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);      // Pin9  = Usart1 TX
     //GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);      // Pin10 = Usart1 RX
 
-    GPIO_PinAFConfig(GPIOB, GPIO_PinSource6,  GPIO_AF_I2C1);        // Pin6 = I2C1 SCL
-    GPIO_PinAFConfig(GPIOB, GPIO_PinSource7,  GPIO_AF_I2C1);        // Pin7 = I2C1 SDA
+    //GPIO_PinAFConfig(GPIOB, GPIO_PinSource6,  GPIO_AF_I2C1);        // Pin6 = I2C1 SCL
+    //GPIO_PinAFConfig(GPIOB, GPIO_PinSource7,  GPIO_AF_I2C1);        // Pin7 = I2C1 SDA
+
+    init_gpioI2C();
 }
 
 
@@ -183,22 +217,6 @@ static void init_usart2()
 }
 
 
-static void init_i2c()
-{
-    I2C_InitTypeDef  I1;
-
-
-    I2C_StructInit( &I1 );
-      I1.I2C_ClockSpeed          = 100000;
-      I1.I2C_Mode                = I2C_Mode_I2C;
-      I1.I2C_DutyCycle           = I2C_DutyCycle_2;        // only matters in fast mode
-      I1.I2C_OwnAddress1         = 0;                      // only matters in slave mode: we are the master
-      I1.I2C_Ack                 = I2C_Ack_Enable;
-      I1.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-    I2C_Init( I2C1, &I1    );
-    I2C_Cmd ( I2C1, ENABLE );
-}
-
 
 static void init_hw()
 {
@@ -222,7 +240,7 @@ static void init_hw()
 
     init_gpios();
     init_usart2();
-    init_i2c();
+    //init_i2c();
 }
 
 

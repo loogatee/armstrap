@@ -26,12 +26,14 @@
 #define I2C_STATE_WRITE_SLAVEADDR        4
 #define I2C_STATE_WRITE_CMDREG           5
 #define I2C_STATE_WRITE_CMDREG2          6
-#define I2C_STATE_WAIT_WAIT              7
-#define I2C_STATE_DO_RSEN                8
-#define I2C_STATE_WRITE_SLAVEADDR_RW     9
-#define I2C_STATE_READ_THE_DATA          10
-#define I2C_STATE_WAIT_STOP              11
-#define I2C_STATE_DO_WRITEONLY           12
+#define I2C_STATE_WRITE_WAITBTF          7
+#define I2C_STATE_WAIT_STOPF             8
+#define I2C_STATE_START_COMPLETE2        9
+#define I2C_STATE_WRITE_SLAVEADDR_RW     10
+#define I2C_STATE_READ_THE_DATA          11
+#define I2C_STATE_WAIT_STOP              12
+#define I2C_STATE_DO_WRITEONLY           13
+#define I2C_STATE_FINISH_CLEANUP         14
 
 #define I2C_WRITE_SUBSTATE_START         0
 #define I2C_WRITE_SUBSTATE_WAITCOMPLETE  1
@@ -51,7 +53,7 @@ typedef struct
 {
     u8       *ic_dptr;            // destination for Read Data
     u8       *ic_wdata;           // Source ptr to Write Data
-    u8       *ic_complptr;        // completion Ptr
+    u32      *ic_complptr;        // completion Ptr
     I2CCMDS  *ic_cmdptr;          // Ptr to the Job List
 } II2C;
 
@@ -78,7 +80,7 @@ static bool     i2c_1_useCmdReg2;
 static u8       i2c_1_write_substate;
 static u8       i2c_1_write_data;
 static u8       i2c_1_read_substate;
-
+static u8       i2c_1_cleanup_count;
 
 
 static u8  i2c_1_do_write_substate( unsigned int   wait_type );
@@ -91,7 +93,7 @@ u32 count2;
 u32 count3;
 u32 count4;
 
-
+extern void init_gpioI2C( void );
 
 
 void I2C_master_Init( void )
@@ -107,11 +109,13 @@ void I2C_master_Init( void )
     i2c_1_out_qindex = 0;
       
     i2c_1_state = I2C_STATE_GETJOB;
+
+    i2c_1_cleanup_count = 0;
 }
 
 
 
-bool I2C_master_SendCmd( u8 *dptr, u8 *wptr, u8 *complptr, I2CCMDS *listptr )
+bool I2C_master_SendCmd( u8 *dptr, u8 *wptr, u32 *complptr, I2CCMDS *listptr )
 {
     II2C  *lqitem;
     bool   retv = FALSE;
@@ -138,50 +142,55 @@ bool I2C_master_SendCmd( u8 *dptr, u8 *wptr, u8 *complptr, I2CCMDS *listptr )
 
 static void cleanup( void )
 {
-	STM_REGISTER I2C1->CR1 |= I2C_CR1_STOP;                               //     Send Stop!   Terminates I2C protocol machine
+	GPIO_InitTypeDef Xgpio;
 
-	U2_Print8( "cleanup, i2c_1_state: ", i2c_1_state );                   //     Message out to debug port (optional)
-	//U2_Print8( "SSP1CON2: ", STM_REGISTER SSP1CON2 );                   //     Message out to debug port (optional)
+	++i2c_1_cleanup_count;
 
-	i2c_1_state = I2C_STATE_GETJOB;                                       //     state machine transitions to:  Looking For New Job
+	if( i2c_1_cleanup_count == 1 )
+	{
+		U2_Print8( "cleanup, i2c_1_state: ", i2c_1_state );
+	    U2_Print32("clnup SR1: ",I2C1->SR1);
+	    U2_Print32("clnup SR2: ",I2C1->SR2);
+	}
 
-	--i2c_1_num_qitems;                                                   //     Item is no longer on the Q, total number decreases by 1
-	if( ++i2c_1_out_qindex == I2C_1_QENTRYS ) { i2c_1_out_qindex = 0; }   //     Where next item will come from.  adjusts to 0 if wrapped
+   	I2C1->CR1 |= I2C_CR1_SWRST;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   DISABLE);
+    GPIOB->AFR[0] = 0;
 
-	if( i2c_1_activeitem->ic_complptr != 0 )                              //     Is there a valid Completion Pointer ?
-	    *i2c_1_activeitem->ic_complptr = I2C_COMPLETION_TIMEOUT;          //         signal a non-zero to that address to indicate completion
+    GPIO_StructInit(&Xgpio);
+    	 Xgpio.GPIO_Mode  = GPIO_Mode_OUT;
+    	 Xgpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;
+    	 Xgpio.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+    	 Xgpio.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &Xgpio);
+
+    GPIO_SetBits(GPIOB, GPIO_Pin_6|GPIO_Pin_7);
+
+	i2c_1_state = I2C_STATE_FINISH_CLEANUP;                               //     state machine transitions to:  Looking For New Job
 }
 
 
 
 
 
-//GetSysTick( void );
-//uint32_t  GetSysDelta( uint32_t OriginalTime );
-//I2C_CR1_STOP
-// I2Cx->CR1 |= I2C_CR1_ENARP;
+//
 void I2C_master_Process( void )
 {
     u8  tmpb;
+    u16 S1,S2;
 
-    if( i2c_1_state != I2C_STATE_GETJOB )                                         // If the state machine is active
+
+    if( i2c_1_state != I2C_STATE_GETJOB && i2c_1_state != I2C_STATE_FINISH_CLEANUP )            // If the state machine is active
     {
         if( GetSysDelta( i2c_1_starttime ) >= TIMEOUT_VAL )                       // Safety valve: too long to complete this job ?
         {
-            STM_REGISTER I2C1->CR1 |= I2C_CR1_STOP;                               //     Send Stop!   Terminates I2C protocol machine
-            RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
-            RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
+        	U2_Print8( "TO! i2c_1_state: ", i2c_1_state );                        //     Message out to debug port (optional)
+        	--i2c_1_num_qitems;                                                   //     Item is no longer on the Q, total number decreases by 1
+        	if( ++i2c_1_out_qindex == I2C_1_QENTRYS ) { i2c_1_out_qindex = 0; }   //     Where next item will come from.  adjusts to 0 if wrapped
 
-            //U2_Print8( "TO! i2c_1_state: ", i2c_1_state );                      //     Message out to debug port (optional)
-          	U2_Print32("to SR1: ",I2C1->SR1);
-            U2_Print32("to SR2: ",I2C1->SR2);
-
-            i2c_1_state = I2C_STATE_GETJOB;                                       //     state machine transitions to:  Looking For New Job
-            --i2c_1_num_qitems;                                                   //     Item is no longer on the Q, total number decreases by 1
-            if( ++i2c_1_out_qindex == I2C_1_QENTRYS ) { i2c_1_out_qindex = 0; }   //     Where next item will come from.  adjusts to 0 if wrapped
-            
-            if( i2c_1_activeitem->ic_complptr != 0 )                              //     Is there a valid Completion Pointer ?
-                *i2c_1_activeitem->ic_complptr = I2C_COMPLETION_TIMEOUT;          //         signal a non-zero to that address to indicate completion
+        	if( i2c_1_activeitem->ic_complptr != 0 )                              //     Is there a valid Completion Pointer ?
+        	    *i2c_1_activeitem->ic_complptr = I2C_COMPLETION_TIMEOUT;          //         signal a non-zero to that address to indicate completion
+        	cleanup();
 
             return;                                                               //     return immediately
         }
@@ -189,6 +198,21 @@ void I2C_master_Process( void )
 
     switch( i2c_1_state )
     {
+    case I2C_STATE_FINISH_CLEANUP:
+
+    	init_gpioI2C();
+
+    	if( (i2c_1_cleanup_count < 50) && (STM_REGISTER I2C1->SR2 & I2C_SR2_BUSY) )    // cleanup_count prevents an endless loop
+    	{                                                                              // We're really looking for the BUSY bit to be clear.
+    	    cleanup();                                                                 // attempts another reset of the I2C line
+    	    return;
+    	}
+    	U2_Print8("cleanup_count: ", i2c_1_cleanup_count);
+    	i2c_1_cleanup_count = 0;
+    	i2c_1_state         = I2C_STATE_GETJOB;
+
+    	break;
+
     case I2C_STATE_GETJOB:
 
         if( i2c_1_num_qitems == 0 ) { return; }                                   // If nothing on the Q, jump out
@@ -222,7 +246,7 @@ void I2C_master_Process( void )
 
     case I2C_STATE_SENDSTART:
 
-    	if( I2C1->SR2 & I2C_SR2_BUSY ) {return;}                                  // Must wait for IDLE
+    	if( STM_REGISTER I2C1->SR2 & I2C_SR2_BUSY ) {return;}                                  // Must wait for IDLE
 
         i2c_1_state = I2C_STATE_START_COMPLETE;                                   // Have IDLE, new state will be START_COMPLETE
         STM_REGISTER I2C1->CR1 |= I2C_CR1_START;                                  // START!
@@ -231,16 +255,18 @@ void I2C_master_Process( void )
 
     case I2C_STATE_START_COMPLETE:
 
-    	if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_SB) ) { return; }                  // only proceed if SB bit goes to 1
-    	if( !(STM_REGISTER I2C1->SR2 & (I2C_SR2_MSL|I2C_SR2_BUSY)) ) { return; }
-        count2++;
+    	S1 = STM_REGISTER I2C1->SR1;
+    	S2 = STM_REGISTER I2C1->SR2;
+    	if( !(S1 & I2C_SR1_SB) ||  !(S2 & I2C_SR2_MSL) || !(S2 & I2C_SR2_BUSY) ) { return; }
+
         i2c_1_state      = I2C_STATE_WRITE_SLAVEADDR;                             // Got it!  Transition to WRITE_SLAVEADDR
         i2c_1_write_data = i2c_1_lcslave;                                         // This is the byte which will be written
+
+        count2++
         FALL_THRU;                                                                // no need to break
 
         U2_Print32("sc SR1: ",I2C1->SR1);
         U2_Print32("sc SR2: ",I2C1->SR2);
-
 
     case I2C_STATE_WRITE_SLAVEADDR:
             
@@ -255,10 +281,6 @@ void I2C_master_Process( void )
         i2c_1_state      = I2C_STATE_WRITE_CMDREG;                                //    new state is WRITE_CMDREG
         i2c_1_write_data = i2c_1_lccmd;                                           //    this is the byte which will be written
         FALL_THRU;                                                                //    no need to break
-
-
-
-
 
     case I2C_STATE_WRITE_CMDREG:
 
@@ -278,9 +300,7 @@ void I2C_master_Process( void )
                 i2c_1_write_data     = *i2c_1_lcwdata ++;                             //    Get the byte to write, and increment pointer thru this list
                 return;                                                               //    return immediately
             }
-
-            i2c_1_state = I2C_STATE_DO_RSEN;                                          // ELSE gonna do a read, new state is DO_RSEN
-            //PIC_REGISTER SSP1CON2bits.RSEN = 1;                                       // Bang!  Hit the RSEN bit.
+            i2c_1_state = I2C_STATE_WRITE_WAITBTF;                                    // Wait for BTF bit to be set
         }
         else
         {
@@ -288,7 +308,6 @@ void I2C_master_Process( void )
             i2c_1_write_data = i2c_1_lccmd2;
             return;
         }
-
         FALL_THRU;                                                                // no need to break
 
     case I2C_STATE_WRITE_CMDREG2:
@@ -305,41 +324,39 @@ void I2C_master_Process( void )
                                                                                   // ELSE return indicates SUCCESS!
             if( i2c_1_lccmdtype == I2C_CMDTYPE_WRITEONLY )                        // Check to see if this job is WRITE-ONLY
             {                                                                     //    Means nothing to read, need only to write some registers
-                i2c_1_state          = I2C_STATE_DO_WRITEONLY;                    //    new state is DO_WRITEONLY
-                i2c_1_write_data     = *i2c_1_lcwdata ++;                         //    Get the byte to write, and increment pointer thru this list
-                //U2_Print8( "WRITEONLY: ", i2c_1_write_data );
+                i2c_1_state      = I2C_STATE_DO_WRITEONLY;                        //    new state is DO_WRITEONLY
+                i2c_1_write_data = *i2c_1_lcwdata ++;                             //    Get the byte to write, and increment pointer thru this list
                 return;                                                           //    return immediately
             }
 
-            i2c_1_state = I2C_STATE_DO_RSEN;                                      // ELSE gonna do a read, new state is DO_RSEN
-            //PIC_REGISTER SSP1CON2bits.RSEN = 1;                                   // Bang!  Hit the RSEN bit.
+            i2c_1_state = I2C_STATE_WRITE_WAITBTF;                                // ELSE wait on BTF bit
         }
         FALL_THRU;
 
-    case I2C_STATE_DO_RSEN:
+    case I2C_STATE_WRITE_WAITBTF:
 
     	if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_BTF) ) { return; }
 
-    	U2_Print32("rsen SR1: ",I2C1->SR1);
-    	U2_Print32("rsen SR2: ",I2C1->SR2);
+    	STM_REGISTER I2C1->CR1 |= I2C_CR1_STOP;
+        i2c_1_state = I2C_STATE_WAIT_STOPF;
+        FALL_THRU;
 
-        cleanup();
+    case I2C_STATE_WAIT_STOPF:
 
-#ifdef NOTYET
+        if( (STM_REGISTER I2C1->SR1 & I2C_SR1_STOPF) || (STM_REGISTER I2C1->SR2 &  I2C_SR2_BUSY) ) { return; }
 
+        STM_REGISTER I2C1->CR1 |= I2C_CR1_ACK;                              // I2C_AcknowledgeConfig(I2Cx, ENABLE);
+        STM_REGISTER I2C1->CR1 &= I2C_NACKPosition_Current;                 // I2C_NACKPositionConfig(I2Cx, I2C_NACKPosition_Current);
+        STM_REGISTER I2C1->CR1 |= I2C_CR1_START;                            // START!
 
-    case I2C_STATE_DO_RSEN:
+        i2c_1_state = I2C_STATE_START_COMPLETE2;
+        FALL_THRU;
 
-        if( PIC_REGISTER SSP1CON2bits.RSEN != 0 )                                 // Looking for RSEN transition to 0
-        {
-            if( PIC_REGISTER PIR2bits.BCL1IF != 0 )                               // not 0 yet, check for Bus Collision
-            {
-                PIC_REGISTER PIR2bits.BCL1IF  = 0;                                //     Bummer, got one.  Clear collision Bit
-                PIC_REGISTER SSP1CON2bits.PEN = 1;                                //     Send STOP
-                i2c_1_state = I2C_STATE_TRY_RESTART;                              //     Let's try again
-            }
-            return;                                                               // Did not receive RSEN=0, return a look again
-        }
+    case I2C_STATE_START_COMPLETE2:
+
+        S1 = STM_REGISTER I2C1->SR1;
+        S2 = STM_REGISTER I2C1->SR2;
+        if( !(S1 & I2C_SR1_SB) ||  !(S2 & I2C_SR2_MSL) || !(S2 & I2C_SR2_BUSY) ) { return; }
 
         i2c_1_state      = I2C_STATE_WRITE_SLAVEADDR_RW;                          // Got RSEN=0.  Awesome!  Transition the state
         i2c_1_write_data = i2c_1_lcslave | 1;                                     // IMPORTANT!!  The 'OR 1' turns the bus around, so Read is Enabled
@@ -347,7 +364,7 @@ void I2C_master_Process( void )
 
     case I2C_STATE_WRITE_SLAVEADDR_RW:
 
-        if( (tmpb = i2c_1_do_write_substate(1)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
+        if( (tmpb = i2c_1_do_write_substate(3)) == RTN_CONTINUE ) { return; }      // Keep calling write_substate while return value says to CONTINUE
 
         if( tmpb == RTN_RESTART )                                                 // Test for the RESTART return value
         {                                                                         //    RESTART indicates some error was detected
@@ -357,6 +374,19 @@ void I2C_master_Process( void )
                                                                                   // ELSE return indicates SUCCESS
         i2c_1_state = I2C_STATE_READ_THE_DATA;                                    // new state = READ_THE_DATA
         FALL_THRU;                                                                // Fall through, start the read immediately
+
+        {
+        	--i2c_1_num_qitems;                                                   //     Item is no longer on the Q, total number decreases by 1
+        	if( ++i2c_1_out_qindex == I2C_1_QENTRYS ) { i2c_1_out_qindex = 0; }   //     Where next item will come from.  adjusts to 0 if wrapped
+
+        	if( i2c_1_activeitem->ic_complptr != 0 )                              //     Is there a valid Completion Pointer ?
+        	    *i2c_1_activeitem->ic_complptr = I2C_COMPLETION_TIMEOUT;          //         signal a non-zero to that address to indicate completion
+        	cleanup();
+        }
+
+
+#ifdef NOTYET
+
 
     case I2C_STATE_READ_THE_DATA:
 
@@ -431,17 +461,15 @@ void I2C_master_Process( void )
 static u8 i2c_1_do_write_substate( unsigned int  WaitType )
 {
     volatile u8 dummy;
+    u16 S1;
+    u16 S2;
 
     switch( i2c_1_write_substate )
     {
     case I2C_WRITE_SUBSTATE_START:
 
     	count3++;
-    	U2_Print8("slaveaddr: ",i2c_1_write_data);
         STM_REGISTER I2C1->DR = i2c_1_write_data;                     // transmits 1 byte
-
-        // PIC is checking for WRITE collisions here
-        
         i2c_1_write_substate = I2C_WRITE_SUBSTATE_WAITCOMPLETE;       // Success on write, transition to next state
         FALL_THRU;
 
@@ -457,25 +485,31 @@ static u8 i2c_1_do_write_substate( unsigned int  WaitType )
     //
     case I2C_WRITE_SUBSTATE_WAITCOMPLETE:
 
-    	//if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_ADDR) )
     	if( WaitType == 1 )
     	{
-    	    if( I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == 0 )
-            {
-            //if( PIC_REGISTER PIR2bits.BCL1IF != 0 )                   // Always check for bus collision, and if set:
-            //{
-            //   PIC_REGISTER PIR2bits.BCL1IF  = 0;                     //       Clr collisionBit
-            //   PIC_REGISTER SSP1CON2bits.PEN = 1;                     //       Send STOP!
-            //   i2c_1_write_substate = I2C_WRITE_SUBSTATE_START;       //       Will re-send the byte
-            //   return RTN_RESTART;                                    //       transition states for attempt to resend
-            //}
+    		S1 = STM_REGISTER I2C1->SR1;
+    		S2 = STM_REGISTER I2C1->SR2;
+
+    		if( !(S1 & I2C_SR1_ADDR) || !(S1 & I2C_SR1_TXE) || !(S2 & I2C_SR2_MSL) || !(S2 & I2C_SR2_BUSY) || !(S2 & I2C_SR2_TRA) )
+    		{
                 return RTN_CONTINUE;                                      //  stay here, keep looking for BF to be 0
             }
+
+    		U2_Print32("wt1 SR1: ",I2C1->SR1);
+    		U2_Print32("wt1 SR2: ",I2C1->SR2);
     	}
     	else if( WaitType == 2 )
     	{
-            if( !(STM_REGISTER I2C1->SR1 & I2C_SR1_TXE) ) { return RTN_CONTINUE; }
+    		S1 = STM_REGISTER I2C1->SR1;
+            if( !(S1 & I2C_SR1_TXE) ) { return RTN_CONTINUE; }
     	}
+    	else if( WaitType == 3 )
+    	{
+    	    S1 = STM_REGISTER I2C1->SR1;
+    	    if( !(S1 & I2C_SR1_ADDR) ) { return RTN_CONTINUE; }
+    	}
+
+
 
         count4++;
     	dummy = STM_REGISTER I2C1->SR2;

@@ -17,8 +17,8 @@
 
 
 static u8   rtc_rbuf[10];           // for returned data from the I2C driver
-static u8   rtc_i2c1_rcompl;        // location where I2C driver will use to signal completion, reads
-static u8   rtc_i2c1_wcompl;        // completion pointer, writes
+static u32  rtc_i2c1_rcompl;        // location where I2C driver will use to signal completion, reads
+static u32  rtc_i2c1_wcompl;        // completion pointer, writes
 static char rtc_sdat0[27];          // used to build up Date string that is presented to user
 static u8   rtc_loop_state;         // state machine for the showtime_loop
 static u16  rtc_loop_timer;         // timer counter for the showtime_loop
