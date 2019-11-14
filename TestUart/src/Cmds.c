@@ -238,15 +238,12 @@ static void init_rtc_stuff(void)
 
 static bool cmds_B( void )
 {
-	int i;
-	GPIO_InitTypeDef Xgpio;
-
 	if(strlen(cmds_InpPtr) == 1)
     {
-	    U2_Print32( "count1: 0x", count1 );
-	    U2_Print32( "count2: 0x", count2 );
-	    U2_Print32( "count3: 0x", count3 );
-        U2_Print32( "count4: 0x", count4 );
+	    //U2_Print32( "count1: 0x", count1 );
+	    //U2_Print32( "count2: 0x", count2 );
+	    //U2_Print32( "count3: 0x", count3 );
+        //U2_Print32( "count4: 0x", count4 );
     }
 
     if( cmds_InpPtr[1] == '1' )
@@ -259,48 +256,15 @@ static bool cmds_B( void )
     }
     else if( cmds_InpPtr[1] == '2' )
     {
-    	I2C1->CR1 |= I2C_CR1_SWRST;
-    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   DISABLE);
-    	GPIOB->AFR[0] = 0;
-
-    	GPIO_StructInit(&Xgpio);
-    	      Xgpio.GPIO_Mode  = GPIO_Mode_OUT;
-    	      Xgpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;
-    	      Xgpio.GPIO_PuPd  = GPIO_PuPd_NOPULL;
-    	      Xgpio.GPIO_Speed = GPIO_Speed_50MHz;
-    	GPIO_Init(GPIOB, &Xgpio);
-
-    	GPIO_SetBits(GPIOB, GPIO_Pin_6|GPIO_Pin_7);
+         ;
     }
     else if( cmds_InpPtr[1] == '3' )
     {
-    	for( i=0; i<12; ++i)
-    	{
-    	    I2C1->CR1 |= I2C_CR1_SWRST;    hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	    I2C1->CR1 &= ~I2C_CR1_SWRST;   hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	    I2C1->CR1 |= I2C_CR1_PE;       hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	    I2C1->CR1 |= I2C_CR1_STOP;
-    	}
-
-    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
-    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
-
-    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   DISABLE);       hammer(STM_REGISTER (u8)I2C1->SR1);   hammer(STM_REGISTER (u8)I2C1->SR2);
-    	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);        hammer(STM_REGISTER (u8)I2C1->SR1);   hammer(STM_REGISTER (u8)I2C1->SR2);
-
-    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
-    	RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
-
-    	for( i=0; i<12; ++i)
-    	{
-    	    I2C1->CR1 |= I2C_CR1_SWRST;    hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	    I2C1->CR1 &= ~I2C_CR1_SWRST;   hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	    I2C1->CR1 |= I2C_CR1_PE;       hammer(STM_REGISTER (u8)I2C1->SR1); hammer(STM_REGISTER (u8)I2C1->SR2);
-    	}
+        ;
     }
     else if( cmds_InpPtr[1] == '4' )
     {
-    	init_gpioI2C();
+    	;
     }
     return TRUE;
 }
@@ -361,8 +325,8 @@ static bool cmds_A( u32 state )
     case DO_INIT:
         
         xRTC_GetTime();
-        //cmds_state_machine = CMDSM_RTC_RDONE;
-        cmds_state_machine=CMDSM_WAITFORLINE; retv=TRUE;
+        cmds_state_machine = CMDSM_RTC_RDONE;
+        //cmds_state_machine=CMDSM_WAITFORLINE; retv=TRUE;
         break;
         
     case DO_PROCESS:
