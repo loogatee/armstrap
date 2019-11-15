@@ -8,13 +8,13 @@
 #define FLASH_COMPLETION_TIMEOUT    I2C_COMPLETION_TIMEOUT
 
 
-void  Flash_Init(void);
-void  Flash_GetMem16(UW2B addr);
-u8    Flash_ShowMem16(void);
-void  Flash_Write8( UW2B addr, u8 *TA );
-u8    Flash_WriteComplete( void );
-void  Flash_Erase8( UW2B addr );
-u8    Flash_EraseComplete( void );
+void  xFlash_Init(void);
+void  xFlash_GetMem16(UW2B addr);
+u8    xFlash_ShowMem16(void);
+void  xFlash_Write8( UW2B addr, u8 *TA );
+u8    xFlash_WriteComplete( void );
+void  xFlash_Erase8( UW2B addr );
+u8    xFlash_EraseComplete( void );
 
 
 #endif

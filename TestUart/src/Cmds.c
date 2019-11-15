@@ -16,8 +16,10 @@
 #define  CMDSM_WAITFORLINE       0
 #define  CMDSM_MEMDUMP           1
 #define  CMDSM_RTC_RDONE         2
-//#define  CMDSM_RTC_WDONE         3
-#define  CMDSM_FLASH_RDONE       3
+#define  CMDSM_RTC_WDONE         3
+#define  CMDSM_FLASH_RDONE       4
+#define  CMDSM_FLASH_WDONE       5
+#define  CMDSM_RTC_TSDONE        6
 
 #define  DO_INIT                 0
 #define  DO_PROCESS              1
@@ -46,30 +48,31 @@ static u32    cmds_word1;
 static u32    cmds_count1;
 static UW2B   cmds_addr;
 static u8     cmds_byte1;
-static u8     cmds_TA[6];
+static u8     cmds_TA[8];
 
 static volatile u32     cmds_xtest;
 
-static bool cmds_FR( u8 state );
-static bool cmds_R ( void );
-static bool cmds_T ( void );
-static bool cmds_B ( void );
+static bool cmds_FR( u32 state );
+static bool cmds_FW( u32 state );
+static bool cmds_TS( u32 state );
 static bool cmds_MD( u32 state );
-static bool cmds_SC( void );
-static bool cmds_rtc( void );
-
+static bool cmds_Z ( u32 state );
 static bool cmds_A ( u32 state );
-//static bool cmds_C ( u32 state );
-static bool cmds_ST( void );
+static bool cmds_R  ( void );
+static bool cmds_T  ( void );
+static bool cmds_B  ( void );
+static bool cmds_SC ( void );
+static bool cmds_rtc( void );
+static bool cmds_ST ( void );
 
 
 
 
-
-extern u32 count1;
-extern u32 count2;
-extern u32 count3;
-extern u32 count4;
+/*
+extern u32 dbgcount1;
+extern u32 dbgcount2;
+extern u32 dbgcount3;
+extern u32 dbgcount4; */
 
 
 
@@ -100,23 +103,25 @@ void CMDS_Process(void)
         
         if     ( S[0] == 'a' )                               signal_done = cmds_A( DO_INIT );
         else if( S[0] == 'b' )                               signal_done = cmds_B();
-      //else if( S[0] == 'c' )                               signal_done = cmds_C();
         else if( S[0] == 'f' && S[1] == 'r')                 signal_done = cmds_FR( DO_INIT );
+        else if( S[0] == 'f' && S[1] == 'w')                 signal_done = cmds_FW( DO_INIT );
         else if( S[0] == 'm' && S[1] == 'd')                 signal_done = cmds_MD( DO_INIT );
         else if( S[0] == 'r' && S[1] == 't' && S[2] == 'c')  signal_done = cmds_rtc();
         else if( S[0] == 'r' )                               signal_done = cmds_R();
         else if( S[0] == 's' && S[1] == 'c')                 signal_done = cmds_SC();
         else if( S[0] == 's' && S[1] == 't')                 signal_done = cmds_ST();
+        else if( S[0] == 't' && S[1] == 's')                 signal_done = cmds_TS( DO_INIT );             // Time Set
         else if( S[0] == 't' )                               signal_done = cmds_T();
         else if( S[0] == 'v' )                               signal_done = CMDS_DisplayVersion();
-      //else if( S[0] == 'z' )                               signal_done = cmds_Z( DO_INIT );
+        else if( S[0] == 'z' )                               signal_done = cmds_Z( DO_INIT );
         break;
         
     case CMDSM_MEMDUMP:      signal_done = cmds_MD( DO_PROCESS );    break;
     case CMDSM_RTC_RDONE:    signal_done = cmds_A ( DO_PROCESS );    break;
     case CMDSM_FLASH_RDONE:  signal_done = cmds_FR( DO_PROCESS );    break;
-  //case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
-        
+    case CMDSM_FLASH_WDONE:  signal_done = cmds_FW( DO_PROCESS );    break;
+    case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
+    case CMDSM_RTC_TSDONE:   signal_done = cmds_TS( DO_PROCESS );    break;
     }
 
     if( signal_done == TRUE ) { U2Inp_SignalCmdDone(); }
@@ -314,64 +319,46 @@ static bool cmds_MD( u32 state )
     return retv;
 }
 
-
-
+//
+//   DS1307 device on the i2c bus
+//
 static bool cmds_A( u32 state )
 {
-    bool retv = FALSE;
-    
-    switch( state )
-    {
-    case DO_INIT:
-        
-        xRTC_GetTime();
-        cmds_state_machine = CMDSM_RTC_RDONE;
-        //cmds_state_machine=CMDSM_WAITFORLINE; retv=TRUE;
-        break;
-        
-    case DO_PROCESS:
-
-        if( xRTC_ShowTime() != RTC_COMPLETION_BUSY )
-        {
-            cmds_state_machine = CMDSM_WAITFORLINE;
-            retv = TRUE;
-        }
-        break;
-    }
-    
-    return retv;
+	if( state == DO_INIT )
+	{
+		xRTC_GetTime();
+		cmds_state_machine = CMDSM_RTC_RDONE;
+	}
+	else if( xRTC_ShowTime() != RTC_COMPLETION_BUSY )
+	{
+	    cmds_state_machine = CMDSM_WAITFORLINE;
+	    return TRUE;
+	}
+	return FALSE;
 }
 
-/*
 
-static bool cmds_Z( u8 state )
+//
+//   DS1307 device on the i2c bus
+//
+static bool cmds_Z( u32 state )
 {
-    bool retv = FALSE;
-    
-    switch( state )
+    if( state == DO_INIT )
     {
-    case DO_INIT:
-        
-        RTC_SetTime_Canned();
+        xRTC_SetTime_Canned();
         cmds_state_machine = CMDSM_RTC_WDONE;
-        break;
-        
-    case DO_PROCESS:
-
-        if( RTC_SetComplete() != RTC_COMPLETION_BUSY )
-        {
-            cmds_state_machine = CMDSM_WAITFORLINE;
-            retv = TRUE;
-        }
-        break;
     }
-    
-    return retv;
+    else if( xRTC_SetComplete() != RTC_COMPLETION_BUSY )
+    {
+        cmds_state_machine = CMDSM_WAITFORLINE;
+        return TRUE;
+    }
+    return FALSE;
 }
 
-*/
 
-// Set Time
+
+// Set Time (Internal RTC of the STM32F405 chip)
 //
 //  012345678901234567890
 //  st 38 12 03 31 01 17
@@ -384,7 +371,7 @@ static bool cmds_ST( void )
     
     if( strlen(cmds_InpPtr) == 2 )
     {
-        U2_PrintSTR( "st mins hrs wkday day mon yr\r\n" );
+        U2_PrintSTR( "st mins hrs wkday day mon yr      (Mon=01)\r\n" );
     }
     else
     {
@@ -449,8 +436,9 @@ static bool cmds_SC( void )
 }
 
 
-
-
+//
+//     Internal RTC of the STM32F405 chip
+//
 static bool cmds_rtc( void )
 {
 	RTC_TimeTypeDef   Trtc;
@@ -485,60 +473,119 @@ static bool cmds_rtc( void )
     return TRUE;
 }
 
-
+//  24LC256:  I2C flash memory
 //
 // fr XXXX    where msb <= 0x7F
 // Reads 8 bytes at XXXX\r\n" );
 //
-static bool cmds_FR( u8 state )
+static bool cmds_FR( u32 state )
 {
 	u8 xx;
-    bool retv = FALSE;
 
-
-    switch( state )
+    if ( state == DO_INIT )
     {
-    case DO_INIT:
-
-        cmds_addr.w = HtoU16( &cmds_InpPtr[3] );
-        Flash_GetMem16(cmds_addr);
+    	if( strlen(cmds_InpPtr) >= 4 ) { cmds_addr.w = HtoU16(&cmds_InpPtr[3]); }
+        xFlash_GetMem16(cmds_addr);
         cmds_state_machine = CMDSM_FLASH_RDONE;
         cmds_byte1 = 0;
-
-        break;
-
-    case DO_PROCESS:
-
-        if( (xx=Flash_ShowMem16()) != FLASH_COMPLETION_BUSY )
+    }
+    else if( (xx=xFlash_ShowMem16()) != FLASH_COMPLETION_BUSY )
+    {
+        if( xx == FLASH_COMPLETION_TIMEOUT )
         {
-        	if( xx == FLASH_COMPLETION_TIMEOUT )
-        	{
-        	    cmds_state_machine = CMDSM_WAITFORLINE;
-                retv = TRUE;
-        	}
-        	else
-        	{
-                cmds_addr.w += 16;
-
-                if( ++cmds_byte1 == 4 )
-                {
-                    ItoH( cmds_addr.w, &cmds_InpPtr[3] );
-                    cmds_state_machine = CMDSM_WAITFORLINE;
-                    retv = TRUE;
-                }
-                else
-                {
-                    Flash_GetMem16(cmds_addr);
-                }
-        	}
+            cmds_state_machine = CMDSM_WAITFORLINE;
+            return TRUE;
         }
-        break;
+        else
+        {
+            cmds_addr.w += 16;
+            if( ++cmds_byte1 == 4 )
+            {
+                ItoH( cmds_addr.w, &cmds_InpPtr[3] );
+                cmds_state_machine = CMDSM_WAITFORLINE;
+                return TRUE;
+            }
+            else
+            {
+                xFlash_GetMem16(cmds_addr);
+            }
+        }
     }
 
-    return retv;
+    return FALSE;
 }
 
 
+//  24LC256:  I2C flash memory
+//
+//  0123456789012345678901234
+//  fw 0400 1203310117223344
+//
+static bool cmds_FW( u32 state )
+{
+    char wbuf[3];
+    u8   i,k;
+
+    wbuf[2] = 0;
+
+    if ( state == DO_INIT )
+    {
+        cmds_addr.w = HtoU16( &cmds_InpPtr[3] );
+
+        for( i=8,k=0; k < 8; i+=2,k++ )
+        {
+            wbuf[0]    = cmds_InpPtr[i];
+            wbuf[1]    = cmds_InpPtr[i+1];
+            cmds_TA[k] = (u8)HtoU16( wbuf );
+        }
+
+        xFlash_Write8( cmds_addr, cmds_TA );
+        cmds_state_machine = CMDSM_FLASH_WDONE;
+    }
+    else if( xFlash_WriteComplete() != FLASH_COMPLETION_BUSY )
+    {
+        cmds_state_machine = CMDSM_WAITFORLINE;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+
+
+
+
+
+
+static bool cmds_TS( u32 state )
+{
+    u8  i,k;
+
+    if( strlen(cmds_InpPtr) == 2 )
+    {
+        U2_PrintSTR( "(i2c) TS mins hrs wkday day mon yr     (Sun=01)\r\n" );
+        return TRUE;
+    }
+
+    if( state == DO_INIT )
+    {
+        for( i=3,k=0; i < 20; i += 3 )
+        {
+            cmds_InpPtr[i+2] = 0;
+            cmds_TA[k++]     = (u8)HtoU16( &cmds_InpPtr[i] );
+        }
+
+        xRTC_SetTime( cmds_TA );
+        cmds_state_machine = CMDSM_RTC_TSDONE;
+    }
+    else if( xRTC_SetComplete() != RTC_COMPLETION_BUSY )
+    {
+        cmds_state_machine = CMDSM_WAITFORLINE;
+        return TRUE;
+    }
+
+    return FALSE;
+}
 
 
 

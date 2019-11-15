@@ -39,7 +39,7 @@ int main(void)
     init_timer();
     I2C_master_Init();
     xRTC_Init();
-    Flash_Init();
+    xFlash_Init();
     init_hw();
 
 
@@ -118,12 +118,6 @@ static void init_gpios(void)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
     //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);     // note USART6 on APB2
 
-    //RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1,   ENABLE);
-
-    //RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   ENABLE);
-    //RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
-
-
     GPIO_StructInit(&UserLed_gpio);
       UserLed_gpio.GPIO_Mode  = GPIO_Mode_OUT;
       UserLed_gpio.GPIO_Pin   = GPIO_Pin_1;                        // C1 = User Led
@@ -138,13 +132,6 @@ static void init_gpios(void)
       UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
       UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOD, &UsartX_gpio);
-
-    //GPIO_StructInit(&I2CX_gpio);
-    //  I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;                         // I2C1: B6=SCL, B7=SDA
-    //  I2CX_gpio.GPIO_Mode   = GPIO_Mode_AF;
-    //  I2CX_gpio.GPIO_Speed  = GPIO_Speed_100MHz;
-    //  I2CX_gpio.GPIO_OType  = GPIO_OType_OD;
-    //GPIO_Init(GPIOB, &I2CX_gpio);
 
 
     //GPIO_StructInit(&UsartX_gpio);
@@ -171,11 +158,6 @@ static void init_gpios(void)
 
     //GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);      // Pin9  = Usart1 TX
     //GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);      // Pin10 = Usart1 RX
-
-    //GPIO_PinAFConfig(GPIOB, GPIO_PinSource6,  GPIO_AF_I2C1);        // Pin6 = I2C1 SCL
-    //GPIO_PinAFConfig(GPIOB, GPIO_PinSource7,  GPIO_AF_I2C1);        // Pin7 = I2C1 SDA
-
-    init_gpioI2C();
 }
 
 
@@ -240,7 +222,7 @@ static void init_hw()
 
     init_gpios();
     init_usart2();
-    //init_i2c();
+    init_gpioI2C();
 }
 
 
@@ -250,6 +232,7 @@ static void init_hw()
 
 void main_systick_handler(void)
 {
+	//I2C_master_Process();
 	Increment_SysTicks();
 }
 
