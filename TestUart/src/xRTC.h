@@ -18,5 +18,9 @@ void  xRTC_ShowTime_Loop(void);
 
 
 
+void  xRTC_GetYearOnly(void);
+u8    xRTC_ShowYearOnly(void);
+void  xRTC_GetTemperatureOnly(void);
+u8    xRTC_ShowTemperatureOnly( void );
 
 #endif

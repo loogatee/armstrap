@@ -29,7 +29,7 @@ static u8   flash_showmem_state;      // waiting on Read Completion, or waiting 
 
 static I2CCMDS flash_registers[] =
 {
-    { 0xA0, 0x00, 0x00, 0x10, I2C_CMDTYPE_RW | I2C_CMDTYPE_CMDREG2 },        // Read 16 bytes of flash memory
+    { 0xAE, 0x00, 0x00, 0x10, I2C_CMDTYPE_RW | I2C_CMDTYPE_CMDREG2 },        // Read 16 bytes of flash memory
     { 0xff, 0xff, 0xff, 0xff, 0xff },                                        // Terminate the List
 };
 
@@ -39,7 +39,7 @@ static I2CCMDS flash_registers[] =
 
 static I2CCMDS flash_regs_w0[2] =
 {
-    { 0xA0, 0x00, 0x00, 0x08, I2C_CMDTYPE_WRITEONLY | I2C_CMDTYPE_CMDREG2 },        // Write flash memory 
+    { 0xAE, 0x00, 0x00, 0x08, I2C_CMDTYPE_WRITEONLY | I2C_CMDTYPE_CMDREG2 },        // Write flash memory
     { 0xff, 0xff, 0xff, 0xff, 0xff },                                               // Terminate the List
 };
 

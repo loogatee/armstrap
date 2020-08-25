@@ -262,6 +262,7 @@ void I2C_master_Process( void )
             {                                                                     //    Means nothing to read, need only to write some registers
                 i2c_1_state      = I2C_STATE_DO_WRITEONLY;                        //    new state is DO_WRITEONLY
                 i2c_1_write_data = *i2c_1_lcwdata ++;                             //    Get the byte to write, and increment pointer thru this list
+                return;
             }
             i2c_1_state = I2C_STATE_WRITE_WAITBTF;                                // Wait for BTF bit to be set
         }
@@ -269,21 +270,25 @@ void I2C_master_Process( void )
         {
             i2c_1_state      = I2C_STATE_WRITE_CMDREG2;                           // new state is CMDREG2
             i2c_1_write_data = i2c_1_lccmd2;                                      // this is the byte to write
+            return;
         }
-        break;                                                                    // jump out
+        FALL_THRU;                                                                    // jump out
 
     case I2C_STATE_WRITE_CMDREG2:
 
-        if( i2c_1_do_write_substate(2) == RTN_CONTINUE ) { return; }              // Keep calling write_substate while return value says to CONTINUE
+    	if( i2c_1_state == I2C_STATE_WRITE_CMDREG2 )
+    	{
+            if( i2c_1_do_write_substate(2) == RTN_CONTINUE ) { return; }              // Keep calling write_substate while return value says to CONTINUE
                                                                                   // ELSE return indicates SUCCESS!
-        if( i2c_1_lccmdtype == I2C_CMDTYPE_WRITEONLY )                            // Check to see if this job is WRITE-ONLY
-        {                                                                         //    Means nothing to read, need only to write some registers
-            i2c_1_state      = I2C_STATE_DO_WRITEONLY;                            //    new state is DO_WRITEONLY
-            i2c_1_write_data = *i2c_1_lcwdata ++;                                 //    Get the byte to write, and increment pointer thru this list
-            return;                                                               //    return immediately
-        }
+            if( i2c_1_lccmdtype == I2C_CMDTYPE_WRITEONLY )                            // Check to see if this job is WRITE-ONLY
+            {                                                                         //    Means nothing to read, need only to write some registers
+                i2c_1_state      = I2C_STATE_DO_WRITEONLY;                            //    new state is DO_WRITEONLY
+                i2c_1_write_data = *i2c_1_lcwdata ++;                                 //    Get the byte to write, and increment pointer thru this list
+                return;                                                               //    return immediately
+            }
 
-        i2c_1_state = I2C_STATE_WRITE_WAITBTF;                                    // ELSE wait on BTF bit
+            i2c_1_state = I2C_STATE_WRITE_WAITBTF;                                    // ELSE wait on BTF bit
+    	}
         FALL_THRU;                                                                // and drop thru
 
     case I2C_STATE_WRITE_WAITBTF:

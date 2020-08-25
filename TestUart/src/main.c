@@ -107,16 +107,15 @@ static void init_gpios(void)
 {
     GPIO_InitTypeDef UserLed_gpio;
     GPIO_InitTypeDef UsartX_gpio;
-    // GPIO_InitTypeDef I2CX_gpio;
 
-  //RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,  ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,  ENABLE);
 
-    //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-    //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);     // note USART6 on APB2
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+  //RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+  //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);         // note USART6 on APB2
 
     GPIO_StructInit(&UserLed_gpio);
       UserLed_gpio.GPIO_Mode  = GPIO_Mode_OUT;
@@ -125,57 +124,59 @@ static void init_gpios(void)
       UserLed_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOC, &UserLed_gpio);
 
+
+    //=========================================
+
+
     GPIO_StructInit(&UsartX_gpio);
-      UsartX_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin D5 (TX), Pin D6 (RX) = USART2
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_9 | GPIO_Pin_10;             // CONSOLE CDC3: A9-TX, A10-RX = USART1
       UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
       UsartX_gpio.GPIO_OType = GPIO_OType_PP;
-      UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
-      UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOD, &UsartX_gpio);
+    GPIO_Init(GPIOA, &UsartX_gpio);
 
+    //GPIO_StructInit(&UsartX_gpio);
+    //  UsartX_gpio.GPIO_Pin   = GPIO_Pin_5 | GPIO_Pin_6;            // Pin D5 (TX), Pin D6 (RX) = USART2
+    //  UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
+    //  UsartX_gpio.GPIO_OType = GPIO_OType_PP;
+    //GPIO_Init(GPIOD, &UsartX_gpio);
 
     //GPIO_StructInit(&UsartX_gpio);
     //  UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
     //  UsartX_gpio.GPIO_Pin   = GPIO_Pin_6 | GPIO_Pin_7;            // C6 tx, C7 rx = USART6
     //  UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
-    //  UsartX_gpio.GPIO_Speed = GPIO_Speed_50MHz;
-    //  UsartX_gpio.GPIO_OType = GPIO_OType_PP;
     //GPIO_Init(GPIOC, &UsartX_gpio);
 
-    //GPIO_StructInit(&UsartX_gpio);
-    //  UsartX_gpio.GPIO_Pin   = GPIO_Pin_9 | GPIO_Pin_10;           // CONSOLE CDC3: A9-TX, A10-RX = USART1
-    //  UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
-    //  UsartX_gpio.GPIO_OType = GPIO_OType_PP;
-    //GPIO_Init(GPIOA, &UsartX_gpio);
 
 
+    //=========================================
 
-    GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);      // The RX and TX pins are now connected to their AF
-    GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);      //   so that the USART2 can take over control of the pins
 
-    //GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);      // USART6 alternative function  6 is TX
-    //GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);      //   7 is RX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);       // Pin9  = Usart1 TX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);       // Pin10 = Usart1 RX
 
-    //GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);      // Pin9  = Usart1 TX
-    //GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);      // Pin10 = Usart1 RX
+  //GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);        // The RX and TX pins are now connected to their AF
+  //GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);        //   so that the USART2 can take over control of the pins
+
+  //GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);        // USART6 alternative function  6 is TX
+  //GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);        //   7 is RX
 }
 
 
 static void init_usart2()
 {
-    USART_InitTypeDef U2;
+    //USART_InitTypeDef U2;
     //USART_InitTypeDef U6;
-    //USART_InitTypeDef U1;
+    USART_InitTypeDef U1;
 
-    USART_StructInit( &U2 );
-      U2.USART_BaudRate            = 9600;
-      U2.USART_WordLength          = USART_WordLength_8b;
-      U2.USART_StopBits            = USART_StopBits_1;
-      U2.USART_Parity              = USART_Parity_No;
-      U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-      U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-    USART_Init( USART2, &U2    );
-    USART_Cmd ( USART2, ENABLE );
+    //USART_StructInit( &U2 );
+    //  U2.USART_BaudRate            = 9600;
+    //  U2.USART_WordLength          = USART_WordLength_8b;
+    //  U2.USART_StopBits            = USART_StopBits_1;
+    //  U2.USART_Parity              = USART_Parity_No;
+    //  U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    //  U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+    //USART_Init( USART2, &U2    );
+    //USART_Cmd ( USART2, ENABLE );
 
  /* USART_StructInit( &U6 );
       U6.USART_BaudRate            = 9600;
@@ -187,7 +188,7 @@ static void init_usart2()
     USART_Init( USART6, &U6    );
     USART_Cmd ( USART6, ENABLE ); */
 
-  /*  USART_StructInit( &U1 );
+    USART_StructInit( &U1 );
       U1.USART_BaudRate            = 9600;
       U1.USART_WordLength          = USART_WordLength_8b;
       U1.USART_StopBits            = USART_StopBits_1;
@@ -195,7 +196,7 @@ static void init_usart2()
       U1.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
       U1.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
     USART_Init( USART1, &U1    );
-    USART_Cmd ( USART1, ENABLE ); */
+    USART_Cmd ( USART1, ENABLE );
 }
 
 

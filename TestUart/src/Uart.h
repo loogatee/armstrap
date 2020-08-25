@@ -3,8 +3,7 @@
 #define _UART_H_
 
 
-#define USE_FTDI_PORT
-
+//#define USE_FTDI_PORT
 
 
 

@@ -20,6 +20,7 @@
 #define  CMDSM_FLASH_RDONE       4
 #define  CMDSM_FLASH_WDONE       5
 #define  CMDSM_RTC_TSDONE        6
+#define  CMDSM_RTCY_RDONE        7
 
 #define  DO_INIT                 0
 #define  DO_PROCESS              1
@@ -58,6 +59,7 @@ static bool cmds_TS( u32 state );
 static bool cmds_MD( u32 state );
 static bool cmds_Z ( u32 state );
 static bool cmds_A ( u32 state );
+static bool cmds_Y ( u32 state );
 static bool cmds_R  ( void );
 static bool cmds_T  ( void );
 static bool cmds_B  ( void );
@@ -89,6 +91,7 @@ void CMDS_Init(void)
 }
 
 
+
 void CMDS_Process(void)
 {
     bool  signal_done = TRUE;
@@ -113,11 +116,13 @@ void CMDS_Process(void)
         else if( S[0] == 't' && S[1] == 's')                 signal_done = cmds_TS( DO_INIT );             // Time Set
         else if( S[0] == 't' )                               signal_done = cmds_T();
         else if( S[0] == 'v' )                               signal_done = CMDS_DisplayVersion();
+        else if( S[0] == 'y' )                               signal_done = cmds_Y( DO_INIT );
         else if( S[0] == 'z' )                               signal_done = cmds_Z( DO_INIT );
         break;
         
     case CMDSM_MEMDUMP:      signal_done = cmds_MD( DO_PROCESS );    break;
     case CMDSM_RTC_RDONE:    signal_done = cmds_A ( DO_PROCESS );    break;
+    case CMDSM_RTCY_RDONE:   signal_done = cmds_Y ( DO_PROCESS );    break;
     case CMDSM_FLASH_RDONE:  signal_done = cmds_FR( DO_PROCESS );    break;
     case CMDSM_FLASH_WDONE:  signal_done = cmds_FW( DO_PROCESS );    break;
     case CMDSM_RTC_WDONE:    signal_done = cmds_Z ( DO_PROCESS );    break;
@@ -333,6 +338,42 @@ static bool cmds_A( u32 state )
 	{
 	    cmds_state_machine = CMDSM_WAITFORLINE;
 	    return TRUE;
+	}
+	return FALSE;
+}
+
+
+//xRTC_GetTemperatureOnly(void);
+//u8    xRTC_ShowTemperatureOnly( void );
+static bool cmds_Y( u32 state )
+{
+	int a = strlen(cmds_InpPtr);
+
+	if( (a == 1) || (a == 2 && cmds_InpPtr[1] == '1') )
+	{
+	    if( state == DO_INIT )
+	    {
+		    xRTC_GetYearOnly();
+		    cmds_state_machine = CMDSM_RTCY_RDONE;
+	    }
+	    else if( xRTC_ShowYearOnly() != RTC_COMPLETION_BUSY )
+	    {
+	        cmds_state_machine = CMDSM_WAITFORLINE;
+	        return TRUE;
+	    }
+	}
+	else if( a == 2 && cmds_InpPtr[1] == '2')
+	{
+	    if( state == DO_INIT )
+	    {
+		    xRTC_GetTemperatureOnly();
+		    cmds_state_machine = CMDSM_RTCY_RDONE;
+	    }
+	    else if( xRTC_ShowTemperatureOnly() != RTC_COMPLETION_BUSY )
+	    {
+	        cmds_state_machine = CMDSM_WAITFORLINE;
+	        return TRUE;
+	    }
 	}
 	return FALSE;
 }

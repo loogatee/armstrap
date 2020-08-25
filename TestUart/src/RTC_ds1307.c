@@ -9,6 +9,8 @@
 #include "i2c.h"
 #include "Utils.h"
 
+extern int siprintf(char *buf, const char *fmt, ...);
+
 
 
 #define STATE_GET_TIME     0
@@ -17,6 +19,7 @@
 
 
 static u8   rtc_rbuf[10];           // for returned data from the I2C driver
+static char rtc_nbuf[8];
 static u32  rtc_i2c1_rcompl;        // location where I2C driver will use to signal completion, reads
 static u32  rtc_i2c1_wcompl;        // completion pointer, writes
 static char rtc_sdat0[27];          // used to build up Date string that is presented to user
@@ -26,7 +29,19 @@ static u16  rtc_loop_timer;         // timer counter for the showtime_loop
 
 static I2CCMDS rtc_registers[] =
 {
-    { 0xD0, 0x00, 0x00, 0x07, I2C_CMDTYPE_RW },        // RTC: read the registers
+    { 0xD0, 0x00, 0x00, 0x07, I2C_CMDTYPE_RW },        // RTC: read 7 registers starting at 0x00
+    { 0xff, 0xff, 0xff, 0xff, 0xff           },        // Terminate the List
+};
+
+static I2CCMDS rtc_YearRegister[] =                    // this was just for testing/verification
+{
+    { 0xD0, 0x06, 0x00, 0x01, I2C_CMDTYPE_RW },        // RTC: read 1 register, from 0x06
+    { 0xff, 0xff, 0xff, 0xff, 0xff           },        // Terminate the List
+};
+
+static I2CCMDS rtc_TemperatureRegisters[] =
+{
+    { 0xD0, 0x11, 0x00, 0x02, I2C_CMDTYPE_RW },        // RTC: read 2 registers starting at 0x11
     { 0xff, 0xff, 0xff, 0xff, 0xff           },        // Terminate the List
 };
 
@@ -75,6 +90,19 @@ void xRTC_GetTime( void )
 {
     rtc_rbuf[0] = 0;
     I2C_master_SendCmd( rtc_rbuf, 0, &rtc_i2c1_rcompl, rtc_registers );
+}
+
+void  xRTC_GetYearOnly(void)
+{
+    rtc_rbuf[0] = 0;
+    I2C_master_SendCmd( rtc_rbuf, 0, &rtc_i2c1_rcompl, rtc_YearRegister );
+}
+
+void  xRTC_GetTemperatureOnly(void)
+{
+    rtc_rbuf[0] = 0;
+    rtc_rbuf[1] = 0;
+    I2C_master_SendCmd( rtc_rbuf, 0, &rtc_i2c1_rcompl, rtc_TemperatureRegisters );
 }
 
 void xRTC_SetTime_Canned( void )
@@ -133,6 +161,72 @@ u8 xRTC_ShowTime( void )
     }
     return retv;
 }
+
+u8 xRTC_ShowYearOnly( void )
+{
+    u8  retv = rtc_i2c1_rcompl;
+
+    if( retv != I2C_COMPLETION_BUSY )
+    {
+        if( retv == I2C_COMPLETION_TIMEOUT )
+        {
+            U2_PrintSTR( "Timeout RTC!!" );
+            U2_Print8  ( "    buf[0]: ", rtc_rbuf[0] );
+        }
+        else                                               // ELSE completed OK
+        {
+        	U2_Print8( "Year: ", rtc_rbuf[0] );
+        }
+    }
+    return retv;
+}
+
+//  1E 00 = 30.00 = 86.00
+//  1D C0 = 29.75 = 85.55
+//  1D 80 = 29.50 = 85.10
+//  1D 40 = 29.25 = 84.65
+//  1D 00 = 29.00 = 84.20
+//  1C C0 = 28.75 = 83.75
+//  1C 80 = 28.50 = 83.30
+//  1C 40 = 28.25 = 82.85
+//  1C 00 = 28.00 = 82.40
+//
+u8 xRTC_ShowTemperatureOnly( void )
+{
+    u32   i1,i2;
+    u8    a;
+    u8    retv = rtc_i2c1_rcompl;
+
+    if( retv != I2C_COMPLETION_BUSY )
+    {
+        if( retv == I2C_COMPLETION_TIMEOUT )
+        {
+            U2_PrintSTR( "Timeout RTC!!" );
+            U2_Print8  ( "    buf[0]: ", rtc_rbuf[0] );
+        }
+        else                                               // ELSE completed OK
+        {
+        	U2_Print8( "r11: ", rtc_rbuf[0] );
+        	U2_Print8( "r12: ", rtc_rbuf[1] );
+
+        	i1 = rtc_rbuf[0] * 100;
+        	a  = rtc_rbuf[1] >> 6;
+
+        	if     ( a == 1 )   i1 += 25;
+        	else if( a == 2 )   i1 += 50;
+        	else if( a == 3 )   i1 += 75;
+
+        	i2 = ((i1 * 900) / 500) + 3200;
+        	siprintf(rtc_nbuf,"deg F = %d.%d\n",(int)(i2 / 100), (int)(i2 % 100));
+        	U2_PrintSTR( rtc_nbuf );
+        }
+    }
+    return retv;
+}
+
+
+
+
 
 //
 //   OSC=64Mhz, I2C=400kHz:  time=475.7
