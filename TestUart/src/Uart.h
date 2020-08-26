@@ -3,7 +3,13 @@
 #define _UART_H_
 
 
-//#define USE_FTDI_PORT
+#define dev_USART1    1
+#define dev_USART2    2
+#define dev_USART6    6
+
+
+#define SERIAL_CONSOLE     dev_USART1
+
 
 
 

@@ -145,14 +145,17 @@ void U2_Process( void )
 
     case SERO_STATE_DOCHARS:                                                        // Actively printing out characters
 
-#ifdef USE_FTDI_PORT
-          if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
-          USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
-#else
-          if( !(USART1->SR & USART_FLAG_TC) ) { return; }
-          USART1->DR     = *serd_active_Qitem->sr_sptr++;
-#endif
 
+#if SERIAL_CONSOLE == dev_USART1
+        if( !(USART1->SR & USART_FLAG_TC) ) { return; }
+        USART1->DR     = *serd_active_Qitem->sr_sptr++;
+#elif SERIAL_CONSOLE == dev_USART2
+        if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
+        USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
+#elif SERIAL_CONSOLE == dev_USART2
+        if( !(USART6->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
+        USART6->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
+#endif
 
 
         end_of_string  = *serd_active_Qitem->sr_sptr;                               // Examine character just past the one printed
