@@ -30,8 +30,10 @@ static void     init_hw(void);
 int main(void)
 {
     uint32_t  Ntime;
+    uint32_t  Atime;
 
     Ntime = 0;
+    Atime = 0;
 
     U2_Init();
     U2Inp_Init();
@@ -57,6 +59,12 @@ int main(void)
         {
             GPIO_ToggleBits(GPIOC, GPIO_Pin_1);    //   Toggles the User Led per Delta interval
             Ntime = GetSysTick();                  //   re-init the counter
+        }
+
+        if( GetSysDelta(Atime) >= 2000 )           // number is in miilliseconds
+        {
+            GPIO_ToggleBits(GPIOA, GPIO_Pin_0);    //   Toggles the User Led per Delta interval
+            Atime = GetSysTick();                  //   re-init the counter
         }
 
     }
@@ -107,6 +115,7 @@ void init_gpioI2C(void)
 static void init_gpios(void)
 {
     GPIO_InitTypeDef UserLed_gpio;
+    GPIO_InitTypeDef A0_gpio;
     GPIO_InitTypeDef UsartX_gpio;
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
@@ -165,6 +174,13 @@ static void init_gpios(void)
       UserLed_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOC, &UserLed_gpio);
 
+    GPIO_StructInit(&A0_gpio);
+      A0_gpio.GPIO_Mode  = GPIO_Mode_OUT;
+      A0_gpio.GPIO_Pin   = GPIO_Pin_0;                        // A0 = experiment for now
+      A0_gpio.GPIO_Speed = GPIO_Speed_50MHz;
+      A0_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
+    //A0_gpio.GPIO_OType = GPIO_OType_PP;
+    GPIO_Init(GPIOA, &A0_gpio);
 }
 
 
