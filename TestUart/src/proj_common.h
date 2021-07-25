@@ -13,7 +13,7 @@
 #define VERSION_STR     "Armstrap TestUart Version 1_"
 #define VERSION_MAJOR   1
 #define VERSION_MINOR   1
-#define VERSION_DATE    "07/25/2021 09:10\r\n"
+#define VERSION_DATE    "07/25/2021 09:19\r\n"
 
 
 
