@@ -74,24 +74,24 @@ int main(void)
         {
         case MAINSTATE_WAIT:
 
-        	        if( GetSysDelta(Atime) >= 86400000 )                      // 24 hrs:    86400 * 1000
-        	        {
-        	        	U2_PrintSTR("Timer expired event: Pump ON\n\r");      //   show message
-        	            GPIO_SetBits(GPIOA, GPIO_Pin_0);                      //   Hit A0:  Pump ON!
-        	            Atime = Btime = GetSysTick();                         //   re-init both A and B counter
-        	            mainstate = MAINSTATE_PUMP_ON;                        //   PUMP_ON state controls time that pump is on
-        	        }
-        	        break;
+                    if( GetSysDelta(Atime) >= 86400000 )                      // 24 hrs:    86400 * 1000
+                    {
+                        U2_PrintSTR("Timer expired event: Pump ON\n\r");      //   show message
+                        GPIO_SetBits(GPIOA, GPIO_Pin_0);                      //   Hit A0:  Pump ON!
+                        Atime = Btime = GetSysTick();                         //   re-init both A and B counter
+                        mainstate = MAINSTATE_PUMP_ON;                        //   PUMP_ON state controls time that pump is on
+                    }
+                    break;
 
         case MAINSTATE_PUMP_ON:
 
-        	        if( GetSysDelta(Btime) >= 6000 )                          // 6 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
-        	        {
-        	        	U2_PrintSTR("Timer expired event: Pump OFF\n\r");     //   user message
-        	        	GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
-        	        	mainstate = MAINSTATE_WAIT;                           //   Wait long,long,long time
-        	        }
-        	        break;
+                    if( GetSysDelta(Btime) >= 6000 )                          // 6 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
+                    {
+                        U2_PrintSTR("Timer expired event: Pump OFF\n\r");     //   user message
+                        GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
+                        mainstate = MAINSTATE_WAIT;                           //   Wait long,long,long time
+                    }
+                    break;
         }
 
 
@@ -220,17 +220,17 @@ static void init_gpios(void)
 static void init_console_usartX( void )
 {
 #if SERIAL_CONSOLE == dev_USART1
-	USART_InitTypeDef U1;
+    USART_InitTypeDef U1;
 
-	USART_StructInit( &U1 );
-	  U1.USART_BaudRate            = 9600;
-	  U1.USART_WordLength          = USART_WordLength_8b;
-	  U1.USART_StopBits            = USART_StopBits_1;
-	  U1.USART_Parity              = USART_Parity_No;
-	  U1.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	  U1.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
-	USART_Init( USART1, &U1    );
-	USART_Cmd ( USART1, ENABLE );
+    USART_StructInit( &U1 );
+      U1.USART_BaudRate            = 9600;
+      U1.USART_WordLength          = USART_WordLength_8b;
+      U1.USART_StopBits            = USART_StopBits_1;
+      U1.USART_Parity              = USART_Parity_No;
+      U1.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+      U1.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
+    USART_Init( USART1, &U1    );
+    USART_Cmd ( USART1, ENABLE );
 
 #elif SERIAL_CONSOLE == dev_USART2
     USART_InitTypeDef U2;
@@ -240,7 +240,7 @@ static void init_console_usartX( void )
       U2.USART_WordLength          = USART_WordLength_8b;
       U2.USART_StopBits            = USART_StopBits_1;
       U2.USART_Parity              = USART_Parity_No;
-     U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+      U2.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
       U2.USART_Mode                = USART_Mode_Tx | USART_Mode_Rx;
     USART_Init( USART2, &U2    );
     USART_Cmd ( USART2, ENABLE );
@@ -297,8 +297,8 @@ static void init_hw( void )
 
 void main_systick_handler(void)
 {
-	//I2C_master_Process();
-	Increment_SysTicks();
+    //I2C_master_Process();
+    Increment_SysTicks();
 }
 
 
