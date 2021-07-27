@@ -113,7 +113,7 @@ void init_gpioI2C(void)
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1,   DISABLE);
 
     GPIO_StructInit(&I2CX_gpio);
-      I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;                         // I2C1: B6=SCL, B7=SDA
+      I2CX_gpio.GPIO_Pin    = GPIO_Pin_6 | GPIO_Pin_7;              // I2C1: B6=SCL, B7=SDA
       I2CX_gpio.GPIO_Mode   = GPIO_Mode_AF;
       I2CX_gpio.GPIO_Speed  = GPIO_Speed_100MHz;
       I2CX_gpio.GPIO_OType  = GPIO_OType_OD;
@@ -125,8 +125,8 @@ void init_gpioI2C(void)
     I2C_StructInit( &I1 );
       I1.I2C_ClockSpeed          = 100000;
       I1.I2C_Mode                = I2C_Mode_I2C;
-      I1.I2C_DutyCycle           = I2C_DutyCycle_2;        // only matters in fast mode
-      I1.I2C_OwnAddress1         = 0;                      // only matters in slave mode: we are the master
+      I1.I2C_DutyCycle           = I2C_DutyCycle_2;                 // only matters in fast mode
+      I1.I2C_OwnAddress1         = 0;                               // only matters in slave mode: we are the master
       I1.I2C_Ack                 = I2C_Ack_Enable;
       I1.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
     I2C_Init( I2C1, &I1    );
@@ -157,13 +157,13 @@ static void init_gpios(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
     GPIO_StructInit(&UsartX_gpio);
-      UsartX_gpio.GPIO_Pin   = GPIO_Pin_9 | GPIO_Pin_10;             // CONSOLE CDC3: A9-TX, A10-RX = USART1
+      UsartX_gpio.GPIO_Pin   = GPIO_Pin_9 | GPIO_Pin_10;           // CONSOLE CDC3: A9-TX, A10-RX = USART1
       UsartX_gpio.GPIO_Mode  = GPIO_Mode_AF;
       UsartX_gpio.GPIO_OType = GPIO_OType_PP;
     GPIO_Init(GPIOA, &UsartX_gpio);
 
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);       // Pin9  = Usart1 TX
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);       // Pin10 = Usart1 RX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9,  GPIO_AF_USART1);     // Pin9  = Usart1 TX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);     // Pin10 = Usart1 RX
 
 #elif SERIAL_CONSOLE == dev_USART2
 
@@ -175,8 +175,8 @@ static void init_gpios(void)
       UsartX_gpio.GPIO_OType = GPIO_OType_PP;
     GPIO_Init(GPIOD, &UsartX_gpio);
 
-    GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);        // The RX and TX pins are now connected to their AF
-    GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);        //   so that the USART2 can take over control of the pins
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);      // The RX and TX pins are now connected to their AF
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);      //   so that the USART2 can take over control of the pins
 
 #elif SERIAL_CONSOLE == dev_USART6
 
@@ -188,8 +188,8 @@ static void init_gpios(void)
       UsartX_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
     GPIO_Init(GPIOC, &UsartX_gpio);
 
-    GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);        // USART6 alternative function  6 is TX
-    GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);        //   7 is RX
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);      // USART6 alternative function  6 is TX
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);      //   7 is RX
 
 #endif
 
@@ -197,14 +197,19 @@ static void init_gpios(void)
 
     GPIO_StructInit(&UserLed_gpio);
       UserLed_gpio.GPIO_Mode  = GPIO_Mode_OUT;
-      UserLed_gpio.GPIO_Pin   = GPIO_Pin_1;                        // C1 = User Led
+      UserLed_gpio.GPIO_Pin   = GPIO_Pin_1;       // C1 = User Led
       UserLed_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
       UserLed_gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOC, &UserLed_gpio);
 
+    //
+    //    A0 is the input to a 5v Relay:
+    //        A0 = 0:   Relay Open,   pump OFF
+    //        A0 = 1:   Relay Closed, pump ON
+    //
     GPIO_StructInit(&A0_gpio);
       A0_gpio.GPIO_Mode  = GPIO_Mode_OUT;
-      A0_gpio.GPIO_Pin   = GPIO_Pin_0;                            // A0 = experiment for now
+      A0_gpio.GPIO_Pin   = GPIO_Pin_0;            // A0 = the pin controlling power to the water pump
       A0_gpio.GPIO_Speed = GPIO_Speed_50MHz;
       A0_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
     //A0_gpio.GPIO_OType = GPIO_OType_PP;
