@@ -16,6 +16,10 @@
 #define  NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority
                                                                   0 bits for subpriority */
 
+
+#define   MAINSTATE_WAIT       0
+#define   MAINSTATE_PUMP_ON    1
+
 //typedef struct
 //{
 //    uint32_t   something;
@@ -31,9 +35,14 @@ int main(void)
 {
     uint32_t  Ntime;
     uint32_t  Atime;
+    uint32_t  Btime;
+    uint32_t  mainstate;
 
-    Ntime = 0;
-    Atime = 0;
+    Ntime     = 0;
+    Atime     = 0;
+    Btime     = 0;
+    mainstate = MAINSTATE_WAIT;
+
 
     U2_Init();
     U2Inp_Init();
@@ -61,15 +70,34 @@ int main(void)
             Ntime = GetSysTick();                  //   re-init the counter
         }
 
-        if( GetSysDelta(Atime) >= 2000 )           // number is in miilliseconds
+        switch( mainstate )
         {
-            GPIO_ToggleBits(GPIOA, GPIO_Pin_0);    //   Toggles the User Led per Delta interval
-            Atime = GetSysTick();                  //   re-init the counter
+        case MAINSTATE_WAIT:
+
+        	        if( GetSysDelta(Atime) >= 86400000 )                      // 24 hrs:    86400 * 1000
+        	        {
+        	        	U2_PrintSTR("Timer expired event: Pump ON\n\r");      //   show message
+        	            GPIO_SetBits(GPIOA, GPIO_Pin_0);                      //   Hit A0:  Pump ON!
+        	            Atime = Btime = GetSysTick();                         //   re-init both A and B counter
+        	            mainstate = MAINSTATE_PUMP_ON;                        //   PUMP_ON state controls time that pump is on
+        	        }
+        	        break;
+
+        case MAINSTATE_PUMP_ON:
+
+        	        if( GetSysDelta(Btime) >= 6000 )                          // 6 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
+        	        {
+        	        	U2_PrintSTR("Timer expired event: Pump OFF\n\r");     //   user message
+        	        	GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
+        	        	mainstate = MAINSTATE_WAIT;                           //   Wait long,long,long time
+        	        }
+        	        break;
         }
+
 
     }
 
-    return 0;                                      // if this executes, then Weird happened!
+    return 0;                                      // Will never execute.
 }
 
 
@@ -176,7 +204,7 @@ static void init_gpios(void)
 
     GPIO_StructInit(&A0_gpio);
       A0_gpio.GPIO_Mode  = GPIO_Mode_OUT;
-      A0_gpio.GPIO_Pin   = GPIO_Pin_0;                        // A0 = experiment for now
+      A0_gpio.GPIO_Pin   = GPIO_Pin_0;                            // A0 = experiment for now
       A0_gpio.GPIO_Speed = GPIO_Speed_50MHz;
       A0_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
     //A0_gpio.GPIO_OType = GPIO_OType_PP;
