@@ -16,9 +16,9 @@
 #define  NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority
                                                                   0 bits for subpriority */
 
-
-#define   MAINSTATE_WAIT       0
-#define   MAINSTATE_PUMP_ON    1
+#define   MAINSTATE_1MINSTART  0
+#define   MAINSTATE_WAIT       1
+#define   MAINSTATE_PUMP_ON    2
 
 //typedef struct
 //{
@@ -41,7 +41,7 @@ int main(void)
     Ntime     = 0;
     Atime     = 0;
     Btime     = 0;
-    mainstate = MAINSTATE_WAIT;
+    mainstate = MAINSTATE_1MINSTART;
 
 
     U2_Init();
@@ -70,8 +70,20 @@ int main(void)
             Ntime = GetSysTick();                  //   re-init the counter
         }
 
+
         switch( mainstate )
         {
+        case MAINSTATE_1MINSTART:
+
+                    if( GetSysDelta(Atime) >= 60000 )                          // 60 secs:    60 * 1000
+                    {
+                        U2_PrintSTR("1Min Timer expired event: Pump ON\n\r");  //   show message
+                        GPIO_SetBits(GPIOA, GPIO_Pin_0);                       //   Hit A0:  Pump ON!
+                        Atime = Btime = GetSysTick();                          //   re-init both A and B counter
+                        mainstate = MAINSTATE_PUMP_ON;                         //   PUMP_ON state controls time that pump is on
+                    }
+                    break;
+
         case MAINSTATE_WAIT:
 
                     if( GetSysDelta(Atime) >= 86400000 )                      // 24 hrs:    86400 * 1000
@@ -85,7 +97,7 @@ int main(void)
 
         case MAINSTATE_PUMP_ON:
 
-                    if( GetSysDelta(Btime) >= 6000 )                          // 6 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
+                    if( GetSysDelta(Btime) >= 3000 )                          // 3 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
                     {
                         U2_PrintSTR("Timer expired event: Pump OFF\n\r");     //   user message
                         GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
