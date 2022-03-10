@@ -78,7 +78,8 @@ int main(void)
                     if( GetSysDelta(Atime) >= 60000 )                          // 60 secs:    60 * 1000
                     {
                         U2_PrintSTR("1Min Timer expired event: Pump ON\n\r");  //   show message
-                        GPIO_SetBits(GPIOA, GPIO_Pin_0);                       //   Hit A0:  Pump ON!
+                      //GPIO_SetBits(GPIOA, GPIO_Pin_0);                       //   Hit A0:  Pump ON!
+                        GPIO_SetBits(GPIOD, GPIO_Pin_2);                       //   Hit D2:  Pump ON!
                         Atime = Btime = GetSysTick();                          //   re-init both A and B counter
                         mainstate = MAINSTATE_PUMP_ON;                         //   PUMP_ON state controls time that pump is on
                     }
@@ -89,7 +90,8 @@ int main(void)
                     if( GetSysDelta(Atime) >= 86400000 )                      // 24 hrs:    86400 * 1000
                     {
                         U2_PrintSTR("Timer expired event: Pump ON\n\r");      //   show message
-                        GPIO_SetBits(GPIOA, GPIO_Pin_0);                      //   Hit A0:  Pump ON!
+                      //GPIO_SetBits(GPIOA, GPIO_Pin_0);                      //   Hit A0:  Pump ON!
+                        GPIO_SetBits(GPIOD, GPIO_Pin_2);                      //   Hit D2:  Pump ON!
                         Atime = Btime = GetSysTick();                         //   re-init both A and B counter
                         mainstate = MAINSTATE_PUMP_ON;                        //   PUMP_ON state controls time that pump is on
                     }
@@ -100,7 +102,8 @@ int main(void)
                     if( GetSysDelta(Btime) >= 3000 )                          // 3 seconds ON.  Fills about 1/2 red solo cup!!   ;-)
                     {
                         U2_PrintSTR("Timer expired event: Pump OFF\n\r");     //   user message
-                        GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
+                      //GPIO_ResetBits(GPIOA, GPIO_Pin_0);                    //   A0=0:   Pump OFF
+                        GPIO_ResetBits(GPIOD, GPIO_Pin_2);                    //   D2=0:   Pump OFF
                         mainstate = MAINSTATE_WAIT;                           //   Wait long,long,long time
                     }
                     break;
@@ -155,7 +158,8 @@ void init_gpioI2C(void)
 static void init_gpios(void)
 {
     GPIO_InitTypeDef UserLed_gpio;
-    GPIO_InitTypeDef A0_gpio;
+    //GPIO_InitTypeDef A0_gpio;
+    GPIO_InitTypeDef D2_gpio;
     GPIO_InitTypeDef UsartX_gpio;
 
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,  ENABLE);
@@ -219,6 +223,7 @@ static void init_gpios(void)
     //        A0 = 0:   Relay Open,   pump OFF
     //        A0 = 1:   Relay Closed, pump ON
     //
+#ifdef OLD_WAY_A0
     GPIO_StructInit(&A0_gpio);
       A0_gpio.GPIO_Mode  = GPIO_Mode_OUT;
       A0_gpio.GPIO_Pin   = GPIO_Pin_0;            // A0 = the pin controlling power to the water pump
@@ -226,6 +231,21 @@ static void init_gpios(void)
       A0_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
     //A0_gpio.GPIO_OType = GPIO_OType_PP;
     GPIO_Init(GPIOA, &A0_gpio);
+#endif
+
+
+    //
+    //    D2 is the input to a 5v Relay:
+    //        D2 = 0:   Relay Open,   pump OFF
+    //        D2 = 1:   Relay Closed, pump ON
+    //
+    GPIO_StructInit(&D2_gpio);
+      D2_gpio.GPIO_Mode  = GPIO_Mode_OUT;
+      D2_gpio.GPIO_Pin   = GPIO_Pin_2;            // D2 = the pin controlling power to the water pump
+      D2_gpio.GPIO_Speed = GPIO_Speed_50MHz;
+      D2_gpio.GPIO_PuPd  = GPIO_PuPd_UP;
+    //D2_gpio.GPIO_OType = GPIO_OType_PP;
+    GPIO_Init(GPIOD, &D2_gpio);
 }
 
 

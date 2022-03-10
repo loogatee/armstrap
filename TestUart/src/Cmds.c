@@ -66,7 +66,7 @@ static bool cmds_B  ( void );
 static bool cmds_SC ( void );
 static bool cmds_rtc( void );
 static bool cmds_ST ( void );
-static bool cmds_A0 ( void );
+static bool cmds_D2 ( void );
 
 
 
@@ -104,9 +104,9 @@ void CMDS_Process(void)
         if( cmds_input_ready == FALSE ) { return; }
         cmds_input_ready = FALSE;
         
-        if     ( S[0] == 'a' && S[1] == '0')                 signal_done = cmds_A0();
-        else if( S[0] == 'a' )                               signal_done = cmds_A( DO_INIT );
+        if( S[0] == 'a' )                                    signal_done = cmds_A( DO_INIT );
         else if( S[0] == 'b' )                               signal_done = cmds_B();
+        else if( S[0] == 'd' && S[1] == '2')                 signal_done = cmds_D2();
         else if( S[0] == 'f' && S[1] == 'r')                 signal_done = cmds_FR( DO_INIT );
         else if( S[0] == 'f' && S[1] == 'w')                 signal_done = cmds_FW( DO_INIT );
         else if( S[0] == 'm' && S[1] == 'd')                 signal_done = cmds_MD( DO_INIT );
@@ -157,19 +157,19 @@ void CMDS_SetInputStr(char *StrInp)
     cmds_input_ready = TRUE;
 }
 
-static bool cmds_A0 ( void )
+static bool cmds_D2 ( void )
 {
 	if(strlen(cmds_InpPtr) == 2)
 	{
-        U2_PrintSTR( "A0 0|1");
+        U2_PrintSTR( "D2 0|1");
 	}
 	else if( cmds_InpPtr[3] == '0' )
     {
-		GPIO_ResetBits(GPIOA, GPIO_Pin_0);
+		GPIO_ResetBits(GPIOD, GPIO_Pin_2);
     }
     else if( cmds_InpPtr[3] == '1' )
     {
-    	GPIO_SetBits(GPIOA, GPIO_Pin_0);
+    	GPIO_SetBits(GPIOD, GPIO_Pin_2);
     }
 
     return TRUE;
