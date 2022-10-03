@@ -69,14 +69,14 @@ void U2Inp_Process( void )
             }
             else
             {
-                U2_PrintSTR(seri_prompt);
+                U2_PrintSTRNow(seri_prompt);
             }
         }
         else if( seri_ch == ASCII_BACKSPACE || seri_ch == ASCII_DELETE )
         {
             if( seri_cnt > 0 )
             {
-                U2_PrintSTR(seri_bksp);
+                U2_PrintSTRNow(seri_bksp);
                 --seri_cnt;
             }
         }
@@ -94,7 +94,7 @@ void U2Inp_Process( void )
         if( seri_CmdDone == TRUE )
         {
             U2_PrintSTR(seri_crlf);
-            U2_PrintSTR(seri_prompt);
+            U2_PrintSTRNow(seri_prompt);
             seri_state_machine = SERI_STATE_GETCHARS;
         }
         break;

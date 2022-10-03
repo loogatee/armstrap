@@ -13,12 +13,13 @@
 
 
 
-#define SERO_TYPE_ONECHAR    0x01
-#define SERO_TYPE_STR        0x02
-#define SERO_TYPE_32         0x03
-#define SERO_TYPE_32N        0x04
-#define SERO_TYPE_8          0x05
-#define SERO_TYPE_8N         0x06
+#define SERO_TYPE_ONECHAR    1
+#define SERO_TYPE_STR        2
+#define SERO_TYPE_STRNOW     3
+#define SERO_TYPE_32         4
+#define SERO_TYPE_32N        5
+#define SERO_TYPE_8          6
+#define SERO_TYPE_8N         7
 
 
 
@@ -29,6 +30,7 @@ void U2_Process(void);
 
 void U2_PrintCH(char ch);
 void U2_PrintSTR(const char *pstr);
+void U2_PrintSTRNow(const char *pstr);
 void U2_Print32(const char *pstr, uint32_t val);
 void U2_Print32N(const char *pstr, uint32_t val);
 void U2_Print8(const char *pstr,  uint8_t val);
