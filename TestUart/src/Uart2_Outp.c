@@ -275,106 +275,38 @@ int _write( void *fp, char *buf, u32 len )
 
 #ifdef ACCUMULATINGSTRINGS
 
-    case SERO_STATE_WRITE_TO_LOCALBUF:                                                        // Actively printing out characters
 
-    	  // WAIT_ON_SHARED_BUF_AVAILABLE!
+    case SERO_STATE_WRITE_TO_LOCALBUF:                                                       // Copy what will fit to the local shared buffer.
 
+    	if (*ValidBytePtr == 1) { return; }                                                  // The other side will eventually drain, and flip to 0
 
-        //if( !(USART1->SR & USART_FLAG_TC) ) { return; }
-        //USART1->DR     = *serd_active_Qitem->sr_sptr++;
+        dlen = (u8)strlen(serd_active_Qitem->sr_sptr);                                       // Length of string to be printed
 
-
-        dlen      = (u8)strlen(serd_active_Qitem->sr_sptr);
-        avail_len = SIZE_LBUF - serd_Ilbuf;
-
-        if ((dlen+1) > avail_len)
-        {
-            strncpy((void *)&serd_lbuf[serd_Ilbuf], serd_active_Qitem->sr_sptr, avail_len);        // fill as much as you can
-            strcpy((void *)&serd_lbuf[SIZE_LBUF - 3],"\n\r");                                     // last 3 chars of lbuf:  0x13 0x10 0x00
-            serd_Ilbuf  = SIZE_LBUF - 1;                                                // will be a 00 at Ilbuf
+        if ((dlen+1) > SIZE_LBUF)                                                            // Enforce size limit
+        {                                                                                    // NOTE:  both cases result in 0x00-terminated string
+            strncpy((void *)serd_lbuf, serd_active_Qitem->sr_sptr, (SIZE_LBUF-1));           // fill as much as necessary.
+            serd_lbuf[SIZE_LBUF-1] = 0x00;                                                   // force terminate
         }
         else
         {
-            strcpy((void *)&serd_lbuf[serd_Ilbuf], serd_active_Qitem->sr_sptr);              // Copies a 0 into the buffer, (may not have \n\r)
-            serd_Ilbuf += dlen;                                                       // will be 00 at LbufIndex
+            strcpy((void *)serd_lbuf, serd_active_Qitem->sr_sptr);                           // Room!! copy into the shared buffer.  Guaranteed 0x00 terminator
         }
 
-        if ((serd_active_Qitem->sr_otype >= SERO_TYPE_32) && (serd_Ilbuf < (SIZE_LBUF-4)))
-        {                                                                       //    [ ordering in SERD_OTYPE is important!! ]
-            serd_active_Qitem->sr_otype = SERO_TYPE_STR;                        // change type to STR
-            serd_active_Qitem->sr_sptr  = (char *)serd_databuf;                 // data is in serd_databuf
-            break;
-        }
-        else                                                                    // ELSE this print job is done
+        if ((serd_active_Qitem->sr_otype) >= SERO_TYPE_32 && (dlen < (SIZE_LBUF-2)))         // TYPE_8N is 2 bytes.  That's the only one that could squeeze in
         {
-            --serd_num_Qitems;                                                  // Can now decrement Queue size by 1
-            if( ++serd_out_Qindex == SERO_SQENTRYS ) { serd_out_Qindex = 0; }   // index to next element in the Circular Q.  Wrap if necessary
-
-            if( serd_active_Qitem->sr_compPtr != 0 )                            // Is there a valid Completion Pointer ?
-                *serd_active_Qitem->sr_compPtr = 1;
-
-            ch1 = serd_lbuf[serd_Ilbuf-1];
-            ch2 = serd_lbuf[serd_Ilbuf-2];
-
-            if ( (ch1 != '\n' || ch2 != '\r') && (ch1 != '\r' || ch2 != '\n') && (serd_active_Qitem->sr_SendNow == FALSE))
+            dblen = strlen(serd_databuf);                                                    // There's an additional value in serd_databuf to print out
+                                                                                             // The buffer is only so big.  If it won't fit, do nothing.
+            if ((dlen + dblen + 1) < SIZE_LBUF)                                              // (Size current buf) + (size databuf) + (0x00 terminator):  will it fit?
             {
-            	serd_ostate_machine = SERO_STATE_GETJOB;
-                break;                                                                   // need to keep filling string
-            }
-            else
-            {
-                serd_ostate_machine = SERO_STATE_PRINTSTRING;
-                serd_Iprint         = 0;
-                serd_Ilbuf          = 0;     // finished up filling string.  Init to 0.
-                serd_printchar      = serd_lbuf[serd_Iprint++];
-            }
-            // Allow to fall thru
-        }
-
-        ------------------------------
-
-    case SERO_STATE_WRITE_TO_LOCALBUF:                                                        // Actively printing out characters
-
-    	  // WAIT_ON_SHARED_BUF_AVAILABLE!
-
-#if SERIAL_CONSOLE == dev_USART1
-        //if( !(USART1->SR & USART_FLAG_TC) ) { return; }
-        //USART1->DR     = *serd_active_Qitem->sr_sptr++;
-#elif SERIAL_CONSOLE == dev_USART2
-        if( !(USART2->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
-        USART2->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
-#elif SERIAL_CONSOLE == dev_USART2
-        if( !(USART6->SR & USART_FLAG_TC) ) { return; }                             // TC=1 when Transmission is Complete
-        USART6->DR     = *serd_active_Qitem->sr_sptr++;                             // TX reg filled with a byte of data
-#endif
-
-        dlen = (u8)strlen(serd_active_Qitem->sr_sptr);
-
-        if ((dlen+1) > SIZE_LBUF)
-        {
-            strncpy((void *)serd_lbuf, serd_active_Qitem->sr_sptr, SIZE_LBUF);       // fill as much as you can
-            strcpy((void *)&serd_lbuf[SIZE_LBUF - 5],"XX\n\r");                      // last 5 chars of lbuf:  0x58 0x58 0x13 0x10 0x00
-        }
-        else
-        {
-            strcpy((void *)serd_lbuf, serd_active_Qitem->sr_sptr);              // Copies a 0 into the buffer, (may not have \n\r)
-        }
-
-        if (serd_active_Qitem->sr_otype >= SERO_TYPE_32)                        //    [ ordering in SERD_OTYPE is important!! ]
-        {
-            dblen = strlen(serd_databuf);
-
-            if ((dlen + dblen + 1) > SIZE_LBUF)
-            	strcpy((void *)&serd_lbuf[SIZE_LBUF - 6],"XXX\n\r");        // XXX indicates overflow
-            else
-            	strcpy((void *)&serd_lbuf[dlen], serd_databuf);
+                strcpy((void *)&serd_lbuf[dlen], serd_databuf);                              // If it fits, copy to the shared buffer.
+            }                                                                                // note string destination. starts where the 1st string ends.
         }
 
         --serd_num_Qitems;                                                  // Can now decrement Queue size by 1
         if( ++serd_out_Qindex == SERO_SQENTRYS ) { serd_out_Qindex = 0; }   // index to next element in the Circular Q.  Wrap if necessary
 
         if( serd_active_Qitem->sr_compPtr != 0 )                            // Is there a valid Completion Pointer ?
-            *serd_active_Qitem->sr_compPtr = 1;
+            *serd_active_Qitem->sr_compPtr = 1;                             //   If yes, hit with a signal so it knows.
 
         serd_ostate_machine = SERO_STATE_PRINTSTRING;
         serd_Iprint         = 0;
