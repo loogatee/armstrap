@@ -16,6 +16,7 @@
 #define SERO_TYPE_ONECHAR    1
 #define SERO_TYPE_STR        2
 #define SERO_TYPE_STRNOW     3
+// --------------------------------TYPE_32 and below ALL have a data value associated with it
 #define SERO_TYPE_32         4
 #define SERO_TYPE_32N        5
 #define SERO_TYPE_8          6

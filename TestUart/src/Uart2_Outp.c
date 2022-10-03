@@ -23,7 +23,6 @@
 typedef struct
 {                                  // Items on the Serial Job Queue
     u32    sr_otype;               // Output Type.  See SERD_OTYPE_XX
-    //u16    sr_SendNow;             // Flag to override string accumulation
     char  *sr_sptr;                // pointer to string to be printed
     u32   *sr_compPtr;             // if != 0, sets to 1 on completion
     u32    sr_dval;                // data value as 8-bit or 32-bit
@@ -44,11 +43,11 @@ static u8     serd_pfbuf[LEN_PRINTF_BUF];
 static u32    serd_pfindex;
 static u32    *serd_SavedcompPtr;
 
-static u8   serd_lbuf_0[SIZE_LBUF];
-static u8   serd_lbuf_1[SIZE_LBUF]
-static bool serd_buf1_active;
+static u8   serd_lbuf[SIZE_LBUF];
 static u8   serd_printchar;
 static u8   serd_Iprint;
+static u8  *serd_dbufPtr;
+static u8   serd_Alen;
 
 
 
@@ -62,7 +61,6 @@ void U2_Init( void )
     serd_out_Qindex     = 0;
     serd_ostate_machine = SERO_STATE_GETJOB;
     serd_pfindex        = 0;
-    serd_Ilbuf          = 0;
     serd_SavedcompPtr   = 0;   
 }
 
@@ -102,16 +100,8 @@ void U2_Send( u32 otype, char *sptr, u32 *completionptr, u32 aval)
         lqitem->sr_otype   = otype;                                             // otype goes into element on the Q
         lqitem->sr_sptr    = sptr;                                              // sptr goes into element on the Q
         lqitem->sr_compPtr = completionptr;                                     // completionptr goes into element on the Q
-        
-        //if (otype == SERO_TYPE_STRNOW)
-        //	lqitem->sr_SendNow = TRUE;
-        //else
-        //	lqitem->sr_SendNow = FALSE;
 
-        if( completionptr )
-        {
-            *completionptr = 0;                                                 // if pointer is valid, store 0, indicating Not Done
-        }
+        if( completionptr ) { *completionptr = 0; }                             // if pointer is valid, store 0, indicating Not Done
     }
                                                                                 // Else the Q is full.  Effectively tosses the data
 }                                                                               //   note intention not to return -1 if Q is full
@@ -123,8 +113,7 @@ void U2_Send( u32 otype, char *sptr, u32 *completionptr, u32 aval)
 
 void U2_Process( void )
 {
-    u8    dlen;
-    bool  OverflowFlag;
+    u8    end_of_string;
 
     switch( serd_ostate_machine )
     {
@@ -135,12 +124,14 @@ void U2_Process( void )
         serd_active_Qitem   = &serd_Q_items[serd_out_Qindex];                            // Item to operate on is at 'serd_out_qindex'
         serd_ostate_machine = SERO_STATE_WRITE_TO_LOCALBUF;                              // switch state to 'Processing Characters'
 
+        serd_dbufPtr = serd_lbuf;
+        serd_Alen    = 0;
+
         switch( serd_active_Qitem->sr_otype )                                            // sr_otype dictates the action
         {
           case SERO_TYPE_ONECHAR: serd_databuf[0] = (u8)serd_active_Qitem->sr_dval;      // Character to print is placed in databuf
                                   serd_databuf[1] = 0;                                   // string terminator
-                                  serd_active_Qitem->sr_SendNow = TRUE;
-                                  serd_active_Qitem->sr_sptr    = serd_databuf;             // sptr point to the data in databuf
+                                  serd_active_Qitem->sr_sptr = serd_databuf;             // sptr point to the data in databuf
                                   break;
                                     
           case SERO_TYPE_32:      ItoH(serd_active_Qitem->sr_dval, serd_databuf);        // 32-bit to Hex Data Conversion.  Place in databuf
@@ -162,40 +153,44 @@ void U2_Process( void )
                                   break;                          
         }
         
-        return;                                                                         // could FALL_THRU, but don't be a CPU hog!
+        break;                                                                      // could FALL_THRU, but don't be a CPU hog!
 
 
-    case SERO_STATE_WRITE_TO_LOCALBUF:                                                        // Actively printing out characters
+    case SERO_STATE_WRITE_TO_LOCALBUF:                                                   // Actively printing out characters
 
     	  // WAIT_ON_SHARED_BUF_AVAILABLE!
           //if( !(USART1->SR & USART_FLAG_TC) ) { return; }
 
-        *dbufPtr++  = *serd_active_Qitem->sr_sptr++;
-        serd_ALen++;                                   // Accumulated Length
+        *serd_dbufPtr++ = *serd_active_Qitem->sr_sptr++;                                  // instead of a uart, write to a buffer (like the shared buffer)
+        serd_Alen++;                                                                       // Increment Accumulated Length
 
-        end_of_string = *serd_active_Qitem->sr_sptr;                               // Examine character just past the one printed
+        end_of_string = *serd_active_Qitem->sr_sptr;                                       // take a peek: Examine character just past the one printed
 
-        if ((end_of_string == 0) || (serd_Alen == (SIZE_LBUF-2)))                  // Found the string terminator, or overflowing?
-        {
-        	*dbufPtr = 0;                                                          // dbuf[62] when SIZE_LBUF=63.
+        if ((end_of_string == 0) || (serd_Alen == (SIZE_LBUF-1)))                          // Found the string terminator?, Or at the MAX LENGTH allowed??
+        {                                                                                  //    The -1 FORCES space for 0x00 in last byte at buf[SIZE_LBUF-1]
+        	*serd_dbufPtr = 0;                                                             // buf will ALWAYS, ALWAYS be terminated with a 0
 
-        	if (serd_active_Qitem->sr_otype >= SERO_TYPE_32 && serd_Alen < (SIZE_LBUF-2))         // Any of these types: need to print out the val in databuf
-            {                                                                                     //    [ ordering in SERD_OTYPE is important!! ]
-                serd_active_Qitem->sr_otype = SERO_TYPE_STR;                                      // change type to STR
-                serd_active_Qitem->sr_sptr  = (char *)serd_databuf;                               // data is in serd_databuf
-                break;
+        	if (serd_active_Qitem->sr_otype >= SERO_TYPE_32 && serd_Alen < (SIZE_LBUF-1))  // Value in databuf to print? DO ONLY if within buf size limit
+            {                                                                              //    note that ordering in SERD_OTYPE is important!! (hacky)
+                serd_active_Qitem->sr_otype = SERO_TYPE_STR;                               // change type to STR.  so this code will not re-enter
+                serd_active_Qitem->sr_sptr  = (char *)serd_databuf;                        // data is in serd_databuf.   no change in state.
             }
+        	else
+        	{
+                --serd_num_Qitems;                                                         // Done with Message.  Decrement Queue size by 1
+                if( ++serd_out_Qindex == SERO_SQENTRYS ) { serd_out_Qindex = 0; }          // index to next element in the Circular Q.  Wrap if necessary
 
-            serd_ostate_machine = SERO_STATE_GETJOB;                            // switch state:  look for another job
-            --serd_num_Qitems;                                                  // Can now decrement Queue size by 1
-            if( ++serd_out_Qindex == SERO_SQENTRYS ) { serd_out_Qindex = 0; }   // index to next element in the Circular Q.  Wrap if necessary
+                if( serd_active_Qitem->sr_compPtr != 0 )                                   // Is there a valid Completion Pointer ?
+                    *serd_active_Qitem->sr_compPtr = 1;                                    //    signal a 1 to that address to indicate completion
 
-            if( serd_active_Qitem->sr_compPtr != 0 )                            // Is there a valid Completion Pointer ?
-                *serd_active_Qitem->sr_compPtr = 1;                             //    signal a 1 to that address to indicate completion
+                serd_ostate_machine = SERO_STATE_PRINTSTRING;                              // All the data is in the buffer.   Now print it.
+                serd_Iprint         = 0;                                                   // Index into serd_lbuf
+                serd_printchar      = serd_lbuf[serd_Iprint++];                            // 0th char in serd_lbuf
+        	}
         }
 
+        break;
 
-            // Allow to fall thru
 
     case SERO_STATE_PRINTSTRING:
 
@@ -278,7 +273,7 @@ int _write( void *fp, char *buf, u32 len )
 
 
 
-#ifdef ACCUMULATING STRINGS
+#ifdef ACCUMULATINGSTRINGS
 
     case SERO_STATE_WRITE_TO_LOCALBUF:                                                        // Actively printing out characters
 
@@ -365,8 +360,8 @@ int _write( void *fp, char *buf, u32 len )
             strcpy((void *)serd_lbuf, serd_active_Qitem->sr_sptr);              // Copies a 0 into the buffer, (may not have \n\r)
         }
 
-        if (serd_active_Qitem->sr_otype >= SERO_TYPE_32)
-        {                                                                       //    [ ordering in SERD_OTYPE is important!! ]
+        if (serd_active_Qitem->sr_otype >= SERO_TYPE_32)                        //    [ ordering in SERD_OTYPE is important!! ]
+        {
             dblen = strlen(serd_databuf);
 
             if ((dlen + dblen + 1) > SIZE_LBUF)
